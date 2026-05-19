@@ -1,30 +1,66 @@
-# Domino dot counting app
+# ByteForge Photo Gallery
 
-*Automatically synced with your [v0.app](https://v0.app) deployments*
+A modern, secure photo gallery application built with Next.js 15, React 19, and Supabase. This application allows administrators to manage photo uploads and view customer selections through a protected administrative dashboard.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/androideroman-1599s-projects/v0-domino-dot-counting-app)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/projects/T8mZDrejFXy)
+## 🚀 Features
 
-## Overview
+- **Dynamic Photo Gallery:** Responsive grid for browsing and selecting photos.
+- **Secure Admin Panel:** Protected administrative area for photo management.
+- **Authentication:** Robust security using Supabase Auth and Next.js Middleware.
+- **Real-time Notifications:** Instant feedback for user actions using Sonner toasts.
+- **Theme Support:** Modern UI with dark/light mode support via Tailwind CSS.
+- **Customer Selections:** Dedicated area to view and manage photos selected by customers.
 
-This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
+## 🛠️ Tech Stack
 
-## Deployment
+- **Framework:** [Next.js 15](https://nextjs.org/) (App Router)
+- **Library:** [React 19](https://react.dev/)
+- **Database & Auth:** [Supabase](https://supabase.com/)
+- **Styling:** [Tailwind CSS](https://tailwindcss.com/)
+- **Components:** [Radix UI](https://www.radix-ui.com/) & [shadcn/ui](https://ui.shadcn.com/)
+- **Icons:** [Lucide React](https://lucide.dev/)
 
-Your project is live at:
+## 📦 Getting Started
 
-**[https://vercel.com/androideroman-1599s-projects/v0-domino-dot-counting-app](https://vercel.com/androideroman-1599s-projects/v0-domino-dot-counting-app)**
+### Prerequisites
 
-## Build your app
+- Node.js 18+
+- A Supabase project
 
-Continue building your app on:
+### Installation
 
-**[https://v0.app/chat/projects/T8mZDrejFXy](https://v0.app/chat/projects/T8mZDrejFXy)**
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/AndresRoman04/photogallery.git
+   cd photogallery
+   ```
 
-## How It Works
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-1. Create and modify your project using [v0.app](https://v0.app)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+3. Configure environment variables:
+   Create a `.env.local` file in the root directory and add your Supabase credentials:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+   ```
+
+4. Run the development server:
+   ```bash
+   npm run dev
+   ```
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## 🔐 Administrative Access
+
+The admin panel is protected and located at `/admin`. To access it:
+1. Navigate to `/login`.
+2. Sign in with your Supabase credentials.
+3. You will be automatically redirected to the admin dashboard.
+
+## 📄 License
+
+Created for ByteForge. All rights reserved.
