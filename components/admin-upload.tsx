@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { uploadPhotoAction } from "@/app/actions/photos"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,8 +12,7 @@ import { Upload, X, ImageIcon } from "lucide-react"
 
 interface UploadedPhoto {
   id: string
-  filename: string
-  url: string
+  imageUrl: string
   title: string
   description: string
 }
@@ -24,23 +23,6 @@ export function AdminUpload() {
   const [uploadedPhotos, setUploadedPhotos] = useState<UploadedPhoto[]>([])
   const [titles, setTitles] = useState<{ [key: string]: string }>({})
   const [descriptions, setDescriptions] = useState<{ [key: string]: string }>({})
-
-  const getSupabaseClient = () => {
-    try {
-      console.log("[v0] Getting Supabase client for admin upload...")
-      if (typeof window === "undefined") {
-        console.log("[v0] Running on server side, skipping client creation")
-        return null
-      }
-
-      const client = createClient()
-      console.log("[v0] Admin upload Supabase client retrieved successfully")
-      return client
-    } catch (error) {
-      console.error("[v0] Failed to get Supabase client in admin upload:", error)
-      return null
-    }
-  }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -55,57 +37,25 @@ export function AdminUpload() {
   const uploadPhotos = async () => {
     if (selectedFiles.length === 0) return
 
-    const supabase = getSupabaseClient()
-    if (!supabase) {
-      console.error("[v0] Supabase client not available for upload")
-      alert("Database connection error. Please refresh the page and try again.")
-      return
-    }
-
     setUploading(true)
     const newPhotos: UploadedPhoto[] = []
 
     try {
       console.log("[v0] Starting photo upload process...")
       for (const file of selectedFiles) {
-        // Upload to Supabase Storage
-        const fileExt = file.name.split(".").pop()
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+        const formData = new FormData()
+        formData.append("file", file)
+        formData.append("title", titles[file.name] || file.name)
+        formData.append("description", descriptions[file.name] || "")
 
-        console.log("[v0] Uploading file:", fileName)
-        const { data: uploadData, error: uploadError } = await supabase.storage.from("photos").upload(fileName, file)
+        const result = await uploadPhotoAction(formData)
 
-        if (uploadError) {
-          console.error("[v0] Upload error:", uploadError)
-          continue
+        if (result.success && result.photo) {
+          console.log("[v0] Photo saved successfully:", result.photo)
+          newPhotos.push(result.photo as any)
+        } else {
+          console.error("[v0] Upload failed for file:", file.name, result.error)
         }
-
-        // Get public URL
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("photos").getPublicUrl(fileName)
-
-        console.log("[v0] File uploaded, saving to database...")
-        const { data: photoData, error: dbError } = await supabase
-          .from("photos")
-          .insert({
-            filename:fileName,
-            image_url: publicUrl,
-            storage_path: fileName,
-            title: titles[file.name] || file.name,
-            description: descriptions[file.name] || "",
-            is_active: true,
-          })
-          .select()
-          .single()
-
-        if (dbError) {
-          console.error("[v0] Database error:", dbError)
-          continue
-        }
-
-        console.log("[v0] Photo saved successfully:", photoData)
-        newPhotos.push(photoData)
       }
 
       setUploadedPhotos((prev) => [...prev, ...newPhotos])
@@ -119,19 +69,6 @@ export function AdminUpload() {
     } finally {
       setUploading(false)
     }
-  }
-
-  const supabase = getSupabaseClient()
-  if (!supabase) {
-    return (
-      <div className="max-w-4xl mx-auto">
-        <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-red-600">Database connection error. Please refresh the page and try again.</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
   }
 
   return (
@@ -229,7 +166,7 @@ export function AdminUpload() {
               {uploadedPhotos.map((photo) => (
                 <div key={photo.id} className="space-y-2">
                   <img
-                    src={photo.url || "/placeholder.svg"}
+                    src={photo.imageUrl || "/placeholder.svg"}
                     alt={photo.title}
                     className="w-full h-48 object-cover rounded-lg"
                   />
@@ -246,3 +183,4 @@ export function AdminUpload() {
     </div>
   )
 }
+

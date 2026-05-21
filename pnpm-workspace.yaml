@@ -1,0 +1,13 @@
+packages:
+  - "."
+
+# pnpm v11 security settings
+allowBuilds:
+  "@prisma/client": true
+  "@prisma/engines": true
+  "prisma": true
+  "sharp": true
+
+# Enforce a 24-hour window (1440 minutes) on all downloaded packages
+# This prevents downloading malicious packages immediately after publication
+minimumReleaseAge: 1440

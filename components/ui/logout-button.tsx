@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { getSupabaseClient } from "@/lib/supabase/client"
+import { signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { LogOut } from "lucide-react"
 import { toast } from "sonner"
@@ -11,15 +11,7 @@ export function LogoutButton() {
 
   const handleLogout = async () => {
     try {
-      const supabase = getSupabaseClient()
-      const { error } = await supabase.auth.signOut()
-
-      if (error) {
-        toast.error("Logout failed", {
-          description: error.message,
-        })
-        return
-      }
+      await signOut({ redirect: false })
 
       toast.success("Logged out successfully")
       router.push("/login")
