@@ -1,0 +1,33 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Photo {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title        String
+  description  String?
+  imageUrl     String   @map("image_url")
+  storagePath  String   @map("storage_path")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("photos")
+}
+
+model CustomerSelection {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerEmail  String   @map("customer_email")
+  customerName   String?  @map("customer_name")
+  notes          String?
+  selectedPhotos String[] @map("selected_photos") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("customer_selections")
+}

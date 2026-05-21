@@ -1,36 +1,22 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { getSelectionsAction } from "@/app/actions/photos"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Mail, Calendar, User, MessageSquare } from "lucide-react"
 
-interface CustomerSelection {
-  id: string
-  customer_email: string
-  customer_name: string | null
-  notes: string | null
-  selected_at: string
-  photo: {
-    id: string
-    title: string
-    filename: string
-    url: string
-  }
-}
-
 interface GroupedSelection {
-  customer_email: string
-  customer_name: string | null
-  selected_at: string
+  id: string
+  customerEmail: string
+  customerName: string | null
+  createdAt: Date
   notes: string | null
   photos: Array<{
     id: string
     title: string
-    filename: string
-    url: string
+    imageUrl: string
   }>
 }
 
@@ -43,53 +29,19 @@ export function AdminSelections() {
   }, [])
 
   const loadSelections = async () => {
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from("customer_selections")
-      .select(`
-        id,
-        customer_email,
-        customer_name,
-        notes,
-        selected_at,
-        photo:photos(id, title, filename, url)
-      `)
-      .order("selected_at", { ascending: false })
+    setLoading(true)
+    const result = await getSelectionsAction()
 
-    if (error) {
-      console.error("Error loading selections:", error)
+    if (result.success && result.selections) {
+      setSelections(result.selections as any)
     } else {
-      // Group selections by customer email and selection time
-      const grouped = groupSelectionsByCustomer(data as CustomerSelection[])
-      setSelections(grouped)
+      console.error("Error loading selections:", result.error)
     }
     setLoading(false)
   }
 
-  const groupSelectionsByCustomer = (data: CustomerSelection[]): GroupedSelection[] => {
-    const groups: { [key: string]: GroupedSelection } = {}
-
-    data.forEach((selection) => {
-      const key = `${selection.customer_email}-${selection.selected_at}`
-
-      if (!groups[key]) {
-        groups[key] = {
-          customer_email: selection.customer_email,
-          customer_name: selection.customer_name,
-          selected_at: selection.selected_at,
-          notes: selection.notes,
-          photos: [],
-        }
-      }
-
-      groups[key].photos.push(selection.photo)
-    })
-
-    return Object.values(groups)
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+  const formatDate = (date: Date) => {
+    return new Date(date).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -130,16 +82,16 @@ export function AdminSelections() {
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <User className="h-5 w-5" />
-                    {selection.customer_name || "Anonymous Customer"}
+                    {selection.customerName || "Anonymous Customer"}
                   </CardTitle>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                     <span className="flex items-center gap-1">
                       <Mail className="h-4 w-4" />
-                      {selection.customer_email}
+                      {selection.customerEmail}
                     </span>
                     <span className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
-                      {formatDate(selection.selected_at)}
+                      {formatDate(selection.createdAt)}
                     </span>
                   </div>
                 </div>
@@ -160,7 +112,7 @@ export function AdminSelections() {
                   {selection.photos.map((photo) => (
                     <div key={photo.id} className="space-y-1">
                       <img
-                        src={photo.url || "/placeholder.svg"}
+                        src={photo.imageUrl || "/placeholder.svg"}
                         alt={photo.title}
                         className="w-full h-24 object-cover rounded-lg"
                       />
@@ -174,7 +126,7 @@ export function AdminSelections() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => window.open(`mailto:${selection.customer_email}`, "_blank")}
+                  onClick={() => window.open(`mailto:${selection.customerEmail}`, "_blank")}
                 >
                   <Mail className="h-4 w-4 mr-1" />
                   Reply
@@ -187,3 +139,4 @@ export function AdminSelections() {
     </div>
   )
 }
+

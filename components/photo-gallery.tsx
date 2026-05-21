@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { getSupabaseClient } from "@/lib/supabase/client" // Use singleton client instead of createClient
+import { getPhotosAction, submitSelectionAction } from "@/app/actions/photos"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,11 +12,11 @@ import { Heart, Mail, CheckCircle, Sparkles } from "lucide-react"
 interface Photo {
   id: string
   title: string
-  description: string
-  image_url: string
-  storage_path: string
-  is_active: boolean
-  created_at: string
+  description: string | null
+  imageUrl: string
+  storagePath: string
+  isActive: boolean
+  createdAt: Date
 }
 
 export function PhotoGallery() {
@@ -38,29 +38,16 @@ export function PhotoGallery() {
   const loadPhotos = async () => {
     try {
       console.log("[v0] Starting to load photos...")
-      const supabase = getSupabaseClient() // Use singleton client instead of createClient()
+      setLoading(true)
+      const result = await getPhotosAction()
 
-      if (!supabase) {
-        console.error("[v0] Failed to get Supabase client")
-        setError("Failed to connect to database. Please check your connection.")
-        return
-      }
-
-      console.log("[v0] Supabase client retrieved successfully")
-
-      const { data, error } = await supabase
-        .from("photos")
-        .select("*")
-        .eq("is_active", true)
-        .order("created_at", { ascending: false })
-
-      if (error) {
-        console.error("[v0] Error loading photos:", error)
-        setError(`Failed to load photos: ${error.message}`)
-      } else {
-        console.log("[v0] Photos loaded successfully:", data?.length || 0, "photos")
-        setPhotos(data || [])
+      if (result.success && result.photos) {
+        console.log("[v0] Photos loaded successfully:", result.photos.length, "photos")
+        setPhotos(result.photos as any)
         setError(null)
+      } else {
+        console.error("[v0] Error loading photos:", result.error)
+        setError("Failed to load photos. Please try again.")
       }
     } catch (err) {
       console.error("[v0] Unexpected error loading photos:", err)
@@ -93,25 +80,16 @@ export function PhotoGallery() {
 
     try {
       console.log("[v0] Submitting customer selection...")
-      const supabase = getSupabaseClient() // Use singleton client instead of createClient()
-
-      if (!supabase) {
-        console.error("[v0] Failed to get Supabase client for submission")
-        alert("Failed to connect to database. Please try again.")
-        return
-      }
-
-      const selectionData = {
-        customer_email: customerEmail,
-        customer_name: customerName || null,
+      
+      const result = await submitSelectionAction({
+        customerEmail,
+        customerName: customerName || null,
         notes: notes || null,
-        selected_photos: Array.from(selectedPhotos),
-      }
+        selectedPhotos: Array.from(selectedPhotos),
+      })
 
-      const { error } = await supabase.from("customer_selections").insert([selectionData])
-
-      if (error) {
-        console.error("[v0] Error submitting selections:", error)
+      if (!result.success) {
+        console.error("[v0] Error submitting selections:", result.error)
         alert("Failed to submit selections. Please try again.")
         return
       }
@@ -308,7 +286,7 @@ export function PhotoGallery() {
           >
             <div className="relative overflow-hidden">
               <img
-                src={photo.image_url || "/placeholder.svg?height=256&width=384&query=photo placeholder"}
+                src={photo.imageUrl || "/placeholder.svg?height=256&width=384&query=photo placeholder"}
                 alt={photo.title}
                 className="w-full h-64 object-cover transition-all duration-700 group-hover:scale-110"
               />
@@ -360,3 +338,4 @@ export function PhotoGallery() {
     </div>
   )
 }
+
