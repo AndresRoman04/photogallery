@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { getSelectionsAction } from "@/app/actions/photos"
+import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -111,11 +112,15 @@ export function AdminSelections() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {selection.photos.map((photo) => (
                     <div key={photo.id} className="space-y-1">
-                      <img
-                        src={photo.imageUrl || "/placeholder.svg"}
-                        alt={photo.title}
-                        className="w-full h-24 object-cover rounded-lg"
-                      />
+                      <div className="relative h-24 w-full overflow-hidden rounded-lg">
+                        <Image
+                          src={photo.imageUrl || "/placeholder.svg"}
+                          alt={photo.title}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 50vw, 25vw"
+                        />
+                      </div>
                       <p className="text-xs text-muted-foreground truncate">{photo.title}</p>
                     </div>
                   ))}

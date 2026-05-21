@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import { uploadPhotoAction } from "@/app/actions/photos"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -165,11 +166,15 @@ export function AdminUpload() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {uploadedPhotos.map((photo) => (
                 <div key={photo.id} className="space-y-2">
-                  <img
-                    src={photo.imageUrl || "/placeholder.svg"}
-                    alt={photo.title}
-                    className="w-full h-48 object-cover rounded-lg"
-                  />
+                  <div className="relative h-48 w-full overflow-hidden rounded-lg">
+                    <Image
+                      src={photo.imageUrl || "/placeholder.svg"}
+                      alt={photo.title}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
+                  </div>
                   <div>
                     <h4 className="font-medium">{photo.title}</h4>
                     {photo.description && <p className="text-sm text-muted-foreground">{photo.description}</p>}

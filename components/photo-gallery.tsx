@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { getPhotosAction, submitSelectionAction } from "@/app/actions/photos"
+import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -284,11 +285,13 @@ export function PhotoGallery() {
             className="group overflow-hidden hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 animate-in fade-in slide-in-from-bottom"
             style={{ animationDelay: `${index * 100}ms` }}
           >
-            <div className="relative overflow-hidden">
-              <img
-                src={photo.imageUrl || "/placeholder.svg?height=256&width=384&query=photo placeholder"}
+            <div className="relative h-64 overflow-hidden">
+              <Image
+                src={photo.imageUrl || "/placeholder.svg"}
                 alt={photo.title}
-                className="w-full h-64 object-cover transition-all duration-700 group-hover:scale-110"
+                fill
+                className="object-cover transition-all duration-700 group-hover:scale-110"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               <Button
