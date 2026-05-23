@@ -25,3 +25,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local agent / temporary files
+.agents/
+.DS_Store
+PR_README_INIT_DESCRIPTION.md
+PR_DESCRIPTION.md
+.idea/
+skills/
