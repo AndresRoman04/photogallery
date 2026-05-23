@@ -3,14 +3,18 @@ set -e
 
 echo "🚀 Initializing Photo Gallery Stack..."
 
-# 1. Copy environment template if not present
+# 1. Link environment file if present in parent env directory, otherwise generate
 if [ ! -f .env ]; then
-  echo "📄 Creating .env file..."
-  
-  # Generate a random secure auth secret
-  RANDOM_SECRET=$(openssl rand -base64 33 2>/dev/null || echo "placeholder_auth_secret_please_change_me_1234567890")
-  
-  cat <<EOT > .env
+  if [ -f ../env/.env ]; then
+    echo "🔗 Symlinking .env to ../env/.env..."
+    ln -s ../env/.env .env
+  else
+    echo "📄 Creating .env file..."
+    
+    # Generate a random secure auth secret
+    RANDOM_SECRET=$(openssl rand -base64 33 2>/dev/null || echo "placeholder_auth_secret_please_change_me_1234567890")
+    
+    cat <<EOT > .env
 # Database (Postgres/Docker)
 DATABASE_URL="postgresql://user:password@localhost:5432/photogallery"
 
@@ -26,6 +30,7 @@ STORAGE_ACCESS_KEY="admin"
 STORAGE_SECRET_KEY="password"
 STORAGE_BUCKET="photos"
 EOT
+  fi
 fi
 
 # 2. Build and start containers
