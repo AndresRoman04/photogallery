@@ -1,5 +1,7 @@
 try {
-  require("dotenv/config")
+  const path = require("path");
+  require("dotenv").config({ path: path.resolve(__dirname, "../env/.env") });
+  require("dotenv").config(); // Fallback to local .env
 } catch (e) {
   // dotenv not found, assuming env vars are already provided by Docker/System
 }
