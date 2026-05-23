@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Heart, Mail, CheckCircle, Sparkles } from "lucide-react"
+import { toast } from "sonner"
 
 interface Photo {
   id: string
@@ -91,11 +92,12 @@ export function PhotoGallery() {
 
       if (!result.success) {
         console.error("[v0] Error submitting selections:", result.error)
-        alert("Failed to submit selections. Please try again.")
+        toast.error("Failed to submit selections. Please try again.")
         return
       }
 
       console.log("[v0] Selection submitted successfully")
+      toast.success("Selections submitted successfully!")
 
       try {
         await fetch("/api/send-notification", {
@@ -125,7 +127,7 @@ export function PhotoGallery() {
       }, 3000)
     } catch (error) {
       console.error("[v0] Submission error:", error)
-      alert("Failed to submit selections. Please try again.")
+      toast.error("Failed to submit selections. Please try again.")
     } finally {
       setSubmitting(false)
     }
@@ -135,11 +137,14 @@ export function PhotoGallery() {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[...Array(6)].map((_, i) => (
-          <Card key={i} className="animate-pulse overflow-hidden">
-            <div className="h-64 bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100 rounded-t-lg animate-pulse"></div>
-            <CardContent className="p-4">
-              <div className="h-4 bg-gradient-to-r from-purple-200 to-pink-200 rounded mb-2 animate-pulse"></div>
-              <div className="h-3 bg-gradient-to-r from-blue-200 to-purple-200 rounded w-2/3 animate-pulse"></div>
+          <Card key={i} className="group overflow-hidden border border-gray-150 dark:border-gray-800 shadow-md">
+            <div className="relative h-64 bg-gradient-to-br from-gray-100 via-gray-50 to-gray-200 dark:from-gray-800 dark:via-gray-900 dark:to-gray-800 animate-pulse">
+              {/* Fake heart button placeholder */}
+              <div className="absolute top-3 right-3 h-8 w-8 rounded-md bg-white/40 dark:bg-black/40 backdrop-blur-sm animate-pulse"></div>
+            </div>
+            <CardContent className="p-4 space-y-2 bg-gradient-to-br from-white to-gray-50 dark:from-gray-950 dark:to-gray-900">
+              <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-3/4 animate-pulse"></div>
+              <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded w-1/2 animate-pulse"></div>
             </CardContent>
           </Card>
         ))}
