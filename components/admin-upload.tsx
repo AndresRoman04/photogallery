@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Upload, X, ImageIcon } from "lucide-react"
+import { toast } from "sonner"
 
 interface UploadedPhoto {
   id: string
@@ -46,7 +47,8 @@ export function AdminUpload() {
       for (const file of selectedFiles) {
         const formData = new FormData()
         formData.append("file", file)
-        formData.append("title", titles[file.name] || file.name)
+        const photoTitle = titles[file.name] || file.name
+        formData.append("title", photoTitle)
         formData.append("description", descriptions[file.name] || "")
 
         const result = await uploadPhotoAction(formData)
@@ -54,8 +56,10 @@ export function AdminUpload() {
         if (result.success && result.photo) {
           console.log("[v0] Photo saved successfully:", result.photo)
           newPhotos.push(result.photo as any)
+          toast.success(`Successfully uploaded "${photoTitle}"`)
         } else {
           console.error("[v0] Upload failed for file:", file.name, result.error)
+          toast.error(`Failed to upload "${file.name}": ${result.error || "Unknown error"}`)
         }
       }
 
@@ -66,7 +70,7 @@ export function AdminUpload() {
       console.log("[v0] Upload process completed successfully")
     } catch (error) {
       console.error("[v0] Upload failed:", error)
-      alert("Upload failed. Please try again.")
+      toast.error("Upload failed. Please try again.")
     } finally {
       setUploading(false)
     }

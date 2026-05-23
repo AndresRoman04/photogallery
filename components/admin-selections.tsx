@@ -53,15 +53,51 @@ export function AdminSelections() {
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         {[...Array(3)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardHeader>
-              <div className="h-4 bg-muted rounded w-1/3"></div>
-              <div className="h-3 bg-muted rounded w-1/4"></div>
+          <Card key={i} className="border border-muted bg-card shadow-sm overflow-hidden">
+            <CardHeader className="space-y-2">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2 flex-1">
+                  {/* Customer Name Placeholder */}
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full bg-muted animate-pulse"></div>
+                    <div className="h-5 bg-muted shimmer-gradient rounded w-1/3"></div>
+                  </div>
+                  {/* Contact Info Placeholder */}
+                  <div className="flex gap-4">
+                    <div className="h-4 bg-muted shimmer-gradient rounded w-1/4"></div>
+                    <div className="h-4 bg-muted shimmer-gradient rounded w-1/5"></div>
+                  </div>
+                </div>
+                {/* Photo Badge Count Placeholder */}
+                <div className="w-16 h-6 bg-muted shimmer-gradient rounded-full"></div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="h-20 bg-muted rounded"></div>
+            <CardContent className="space-y-4">
+              {/* Optional Notes Box Placeholder */}
+              <div className="p-3 bg-muted/30 rounded-lg space-y-2">
+                <div className="h-4 bg-muted shimmer-gradient rounded w-3/4"></div>
+                <div className="h-3 bg-muted shimmer-gradient rounded w-1/2"></div>
+              </div>
+              
+              {/* Selected Photos Placeholder */}
+              <div className="space-y-2">
+                <div className="h-4 bg-muted shimmer-gradient rounded w-24"></div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[...Array(4)].map((_, j) => (
+                    <div key={j} className="space-y-1">
+                      <div className="h-24 w-full bg-muted shimmer-gradient rounded-lg"></div>
+                      <div className="h-3 bg-muted shimmer-gradient rounded w-2/3"></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Buttons Placeholder */}
+              <div className="flex gap-2 pt-2">
+                <div className="h-9 w-20 bg-muted shimmer-gradient rounded"></div>
+              </div>
             </CardContent>
           </Card>
         ))}

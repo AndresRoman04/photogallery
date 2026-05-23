@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Heart, Mail, CheckCircle, Sparkles } from "lucide-react"
+import { toast } from "sonner"
 
 interface Photo {
   id: string
@@ -91,7 +92,7 @@ export function PhotoGallery() {
 
       if (!result.success) {
         console.error("[v0] Error submitting selections:", result.error)
-        alert("Failed to submit selections. Please try again.")
+        toast.error("Failed to submit selections. Please try again.")
         return
       }
 
@@ -114,6 +115,7 @@ export function PhotoGallery() {
         console.error("Failed to send email notification:", emailError)
       }
 
+      toast.success("Selections submitted successfully!")
       setSubmitted(true)
       setTimeout(() => {
         setSelectedPhotos(new Set())
@@ -125,7 +127,7 @@ export function PhotoGallery() {
       }, 3000)
     } catch (error) {
       console.error("[v0] Submission error:", error)
-      alert("Failed to submit selections. Please try again.")
+      toast.error("Failed to submit selections. Please try again.")
     } finally {
       setSubmitting(false)
     }
@@ -135,11 +137,13 @@ export function PhotoGallery() {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[...Array(6)].map((_, i) => (
-          <Card key={i} className="animate-pulse overflow-hidden">
-            <div className="h-64 bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100 rounded-t-lg animate-pulse"></div>
-            <CardContent className="p-4">
-              <div className="h-4 bg-gradient-to-r from-purple-200 to-pink-200 rounded mb-2 animate-pulse"></div>
-              <div className="h-3 bg-gradient-to-r from-blue-200 to-purple-200 rounded w-2/3 animate-pulse"></div>
+          <Card key={i} className="overflow-hidden border border-muted bg-card shadow-md">
+            <div className="relative h-64 bg-muted shimmer-gradient">
+              <div className="absolute top-3 right-3 w-8 h-8 rounded bg-background/50 backdrop-blur-sm animate-pulse"></div>
+            </div>
+            <CardContent className="p-4 space-y-3">
+              <div className="h-5 bg-muted shimmer-gradient rounded w-3/4"></div>
+              <div className="h-4 bg-muted shimmer-gradient rounded w-1/2"></div>
             </CardContent>
           </Card>
         ))}
