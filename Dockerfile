@@ -45,6 +45,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/.npmrc* ./
 
 # CRITICAL: Install Prisma and Dotenv in the final stage so migrations work
 RUN npm install prisma@7.8.0 dotenv@latest @prisma/client@7.8.0

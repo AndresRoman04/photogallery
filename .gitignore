@@ -26,7 +26,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-
 # claude
 .claude/
 CLAUDE.md
@@ -41,3 +40,9 @@ package-lock.json
 
 # idea
 .idea/
+
+# local / temp files
+.DS_Store
+PR_DESCRIPTION.md
+PR_README_INIT_DESCRIPTION.md
+skills/
