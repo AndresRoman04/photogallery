@@ -6,14 +6,14 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=postgresql://user:password@db:5432/photogallery
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/photogallery
       - AUTH_SECRET=${AUTH_SECRET}
       - AUTH_TRUST_HOST=true
       - NEXTAUTH_URL=http://localhost:3000
       - STORAGE_ENDPOINT=http://storage:9000
       - NEXT_PUBLIC_STORAGE_ENDPOINT=http://localhost:9000
-      - STORAGE_ACCESS_KEY=admin
-      - STORAGE_SECRET_KEY=password
+      - STORAGE_ACCESS_KEY=${MINIO_ROOT_USER}
+      - STORAGE_SECRET_KEY=${MINIO_ROOT_PASSWORD}
       - STORAGE_BUCKET=photos
       - ADMIN_EMAIL=${ADMIN_EMAIL}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
@@ -24,8 +24,8 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: photogallery
     volumes:
       - db_data:/var/lib/postgresql/data
@@ -36,8 +36,8 @@ services:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: admin
-      MINIO_ROOT_PASSWORD: password
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
       - storage_data:/data
     ports:
