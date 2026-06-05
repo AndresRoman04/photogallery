@@ -25,3 +25,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+# claude
+.claude/
+CLAUDE.md
+
+# agents
+.agents/
+
+# npm — project uses pnpm exclusively
+.npmrc
+package-lock.json
+
+# idea
+.idea/
