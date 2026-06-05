@@ -11,12 +11,16 @@ if [ ! -f .env ]; then
   else
     echo "📄 Creating .env file..."
     
-    # Generate a random secure auth secret
+    # Generate random secure secrets
     RANDOM_SECRET=$(openssl rand -base64 33 2>/dev/null || echo "placeholder_auth_secret_please_change_me_1234567890")
-    
+    POSTGRES_PASSWORD=$(openssl rand -hex 16 2>/dev/null || echo "change_me_postgres_password")
+    MINIO_ROOT_PASSWORD=$(openssl rand -hex 16 2>/dev/null || echo "change_me_minio_password")
+
     cat <<EOT > .env
 # Database (Postgres/Docker)
-DATABASE_URL="postgresql://user:password@localhost:5432/photogallery"
+POSTGRES_USER="user"
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
+DATABASE_URL="postgresql://user:${POSTGRES_PASSWORD}@localhost:5432/photogallery"
 
 # Authentication (Auth.js)
 AUTH_SECRET="${RANDOM_SECRET}"
@@ -25,9 +29,11 @@ ADMIN_EMAIL="admin@example.com"
 ADMIN_PASSWORD="adminPassword"
 
 # Storage (MinIO / S3)
+MINIO_ROOT_USER="admin"
+MINIO_ROOT_PASSWORD="${MINIO_ROOT_PASSWORD}"
 STORAGE_ENDPOINT="http://localhost:9000"
 STORAGE_ACCESS_KEY="admin"
-STORAGE_SECRET_KEY="password"
+STORAGE_SECRET_KEY="${MINIO_ROOT_PASSWORD}"
 STORAGE_BUCKET="photos"
 EOT
   fi
@@ -39,7 +45,7 @@ docker compose up -d --build
 
 # 3. Wait for database to be ready
 echo "⏳ Waiting for PostgreSQL database to be ready..."
-until docker compose exec -T db pg_isready -U user -d photogallery >/dev/null 2>&1; do
+until docker compose exec -T db pg_isready -U "${POSTGRES_USER:-user}" -d photogallery >/dev/null 2>&1; do
   sleep 1
 done
 

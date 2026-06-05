@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma"
 import { uploadFile, getPublicUrl } from "@/lib/storage"
 import { revalidatePath } from "next/cache"
+import { Resend } from "resend"
 
 export async function getPhotosAction() {
   try {
@@ -24,7 +25,7 @@ export async function getSelectionsAction() {
     })
 
     // Fetch all photos for these selections
-    const allPhotoIds = [...new Set(selections.flatMap((s) => s.selectedPhotos))]
+    const allPhotoIds = [...new Set(selections.flatMap((s: { selectedPhotos: string[] }) => s.selectedPhotos))]
     const photos = await prisma.photo.findMany({
       where: { id: { in: allPhotoIds } },
     })
@@ -66,6 +67,27 @@ export async function submitSelectionAction(data: {
     })
 
     revalidatePath("/admin/selections")
+
+    // Send admin notification server-side (no exposed API endpoint needed)
+    try {
+      const photos = await prisma.photo.findMany({
+        where: { id: { in: data.selectedPhotos } },
+        select: { title: true, storagePath: true },
+      })
+      const photoList = photos.map((p) => `- ${p.title} (${p.storagePath})`).join("\n")
+      const emailContent = `New Photo Selection Received!\n\nCustomer Details:\n- Email: ${data.customerEmail}\n- Name: ${data.customerName || "Not provided"}\n\nSelected Photos (${data.selectedPhotos.length}):\n${photoList}\n\n${data.notes ? `Additional Notes:\n${data.notes}\n\n` : ""}---\nThis notification was sent automatically from your Photo Gallery.`
+
+      const resend = new Resend(process.env.RESEND_API_KEY)
+      await resend.emails.send({
+        from: process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev",
+        to: process.env.ADMIN_EMAIL!,
+        subject: `New Photo Selection from ${data.customerEmail}`,
+        text: emailContent,
+      })
+    } catch (emailError) {
+      console.error("Failed to send admin notification email:", emailError)
+    }
+
     return { success: true, selection }
   } catch (error) {
     console.error("Failed to submit selection:", error)

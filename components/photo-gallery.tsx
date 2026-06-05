@@ -96,25 +96,6 @@ export function PhotoGallery() {
         return
       }
 
-      console.log("[v0] Selection submitted successfully")
-
-      try {
-        await fetch("/api/send-notification", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            customerEmail,
-            customerName,
-            photoIds: Array.from(selectedPhotos),
-            notes,
-          }),
-        })
-      } catch (emailError) {
-        console.error("Failed to send email notification:", emailError)
-      }
-
       toast.success("Selections submitted successfully!")
       setSubmitted(true)
       setTimeout(() => {
