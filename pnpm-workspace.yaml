@@ -11,3 +11,7 @@ allowBuilds:
 # Enforce a 24-hour window (1440 minutes) on all downloaded packages
 # This prevents downloading malicious packages immediately after publication
 minimumReleaseAge: 1440
+
+overrides:
+  "hono": ">=4.12.21"
+  "@hono/node-server": ">=1.19.13"
