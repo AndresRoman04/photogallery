@@ -10,6 +10,15 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Heart, Mail, CheckCircle, Sparkles } from "lucide-react"
 import { toast } from "sonner"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 
 interface Photo {
   id: string
@@ -22,7 +31,10 @@ interface Photo {
 }
 
 export function PhotoGallery() {
+  const PAGE_SIZE = 12
   const [photos, setPhotos] = useState<Photo[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set())
@@ -34,18 +46,20 @@ export function PhotoGallery() {
   const [submitted, setSubmitted] = useState(false)
 
   useEffect(() => {
-    loadPhotos()
+    loadPhotos(1)
   }, [])
 
-  const loadPhotos = async () => {
+  const loadPhotos = async (page: number) => {
     try {
       console.log("[v0] Starting to load photos...")
       setLoading(true)
-      const result = await getPhotosAction()
+      const result = await getPhotosAction(page, PAGE_SIZE)
 
       if (result.success && result.photos) {
         console.log("[v0] Photos loaded successfully:", result.photos.length, "photos")
         setPhotos(result.photos as any)
+        setCurrentPage(page)
+        setTotalPages(Math.ceil((result.total ?? 0) / PAGE_SIZE))
         setError(null)
       } else {
         console.error("[v0] Error loading photos:", result.error)
@@ -137,7 +151,7 @@ export function PhotoGallery() {
       <Card className="p-8 text-center bg-gradient-to-br from-red-50 to-pink-50 border-red-200 shadow-lg">
         <h2 className="text-xl font-bold text-red-800 mb-2">Connection Error</h2>
         <p className="text-red-700 mb-4">{error}</p>
-        <Button onClick={loadPhotos} variant="outline" className="hover:bg-red-50 transition-colors bg-transparent">
+        <Button onClick={() => loadPhotos(currentPage)} variant="outline" className="hover:bg-red-50 transition-colors bg-transparent">
           Try Again
         </Button>
       </Card>
@@ -315,6 +329,50 @@ export function PhotoGallery() {
           </Card>
         ))}
       </div>
+
+      {totalPages > 1 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                onClick={(e) => { e.preventDefault(); if (currentPage > 1) loadPhotos(currentPage - 1) }}
+                aria-disabled={currentPage === 1}
+                className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+              const nearCurrent = Math.abs(p - currentPage) <= 1
+              const isEdge = p === 1 || p === totalPages
+              if (!nearCurrent && !isEdge) {
+                if (p === 2 || p === totalPages - 1) {
+                  return <PaginationItem key={p}><PaginationEllipsis /></PaginationItem>
+                }
+                return null
+              }
+              return (
+                <PaginationItem key={p}>
+                  <PaginationLink
+                    href="#"
+                    isActive={p === currentPage}
+                    onClick={(e) => { e.preventDefault(); loadPhotos(p) }}
+                  >
+                    {p}
+                  </PaginationLink>
+                </PaginationItem>
+              )
+            })}
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                onClick={(e) => { e.preventDefault(); if (currentPage < totalPages) loadPhotos(currentPage + 1) }}
+                aria-disabled={currentPage === totalPages}
+                className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
 
       {photos.length === 0 && !error && (
         <Card className="p-8 text-center bg-gradient-to-br from-gray-50 to-blue-50 shadow-lg">
