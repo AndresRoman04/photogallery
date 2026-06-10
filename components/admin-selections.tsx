@@ -7,6 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Mail, Calendar, User, MessageSquare } from "lucide-react"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 
 interface GroupedSelection {
   id: string
@@ -22,19 +31,24 @@ interface GroupedSelection {
 }
 
 export function AdminSelections() {
+  const PAGE_SIZE = 10
   const [selections, setSelections] = useState<GroupedSelection[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadSelections()
+    loadSelections(1)
   }, [])
 
-  const loadSelections = async () => {
+  const loadSelections = async (page: number) => {
     setLoading(true)
-    const result = await getSelectionsAction()
+    const result = await getSelectionsAction(page, PAGE_SIZE)
 
     if (result.success && result.selections) {
       setSelections(result.selections as any)
+      setCurrentPage(page)
+      setTotalPages(Math.ceil((result.total ?? 0) / PAGE_SIZE))
     } else {
       console.error("Error loading selections:", result.error)
     }
@@ -112,7 +126,8 @@ export function AdminSelections() {
           <p className="text-muted-foreground">No customer selections yet.</p>
         </Card>
       ) : (
-        selections.map((selection, index) => (
+        <>
+        {selections.map((selection, index) => (
           <Card key={index}>
             <CardHeader>
               <div className="flex items-start justify-between">
@@ -175,7 +190,51 @@ export function AdminSelections() {
               </div>
             </CardContent>
           </Card>
-        ))
+        ))}
+        {totalPages > 1 && (
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(e) => { e.preventDefault(); if (currentPage > 1) loadSelections(currentPage - 1) }}
+                  aria-disabled={currentPage === 1}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+                const nearCurrent = Math.abs(p - currentPage) <= 1
+                const isEdge = p === 1 || p === totalPages
+                if (!nearCurrent && !isEdge) {
+                  if (p === 2 || p === totalPages - 1) {
+                    return <PaginationItem key={p}><PaginationEllipsis /></PaginationItem>
+                  }
+                  return null
+                }
+                return (
+                  <PaginationItem key={p}>
+                    <PaginationLink
+                      href="#"
+                      isActive={p === currentPage}
+                      onClick={(e) => { e.preventDefault(); loadSelections(p) }}
+                    >
+                      {p}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              })}
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(e) => { e.preventDefault(); if (currentPage < totalPages) loadSelections(currentPage + 1) }}
+                  aria-disabled={currentPage === totalPages}
+                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        )}
+        </>
       )}
     </div>
   )

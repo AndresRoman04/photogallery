@@ -5,24 +5,36 @@ import { uploadFile, getPublicUrl } from "@/lib/storage"
 import { revalidatePath } from "next/cache"
 import { Resend } from "resend"
 
-export async function getPhotosAction() {
+export async function getPhotosAction(page = 1, pageSize = 12) {
   try {
-    const photos = await prisma.photo.findMany({
-      where: { isActive: true },
-      orderBy: { createdAt: "desc" },
-    })
-    return { success: true, photos }
+    const skip = (page - 1) * pageSize
+    const [photos, total] = await Promise.all([
+      prisma.photo.findMany({
+        where: { isActive: true },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: pageSize,
+      }),
+      prisma.photo.count({ where: { isActive: true } }),
+    ])
+    return { success: true, photos, total, page, pageSize }
   } catch (error) {
     console.error("Failed to fetch photos:", error)
     return { success: false, error: "Failed to fetch photos" }
   }
 }
 
-export async function getSelectionsAction() {
+export async function getSelectionsAction(page = 1, pageSize = 10) {
   try {
-    const selections = await prisma.customerSelection.findMany({
-      orderBy: { createdAt: "desc" },
-    })
+    const skip = (page - 1) * pageSize
+    const [selections, total] = await Promise.all([
+      prisma.customerSelection.findMany({
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: pageSize,
+      }),
+      prisma.customerSelection.count(),
+    ])
 
     // Fetch all photos for these selections
     const allPhotoIds = [...new Set(selections.flatMap((s: { selectedPhotos: string[] }) => s.selectedPhotos))]
@@ -43,7 +55,7 @@ export async function getSelectionsAction() {
         .filter(Boolean),
     }))
 
-    return { success: true, selections: groupedSelections }
+    return { success: true, selections: groupedSelections, total, page, pageSize }
   } catch (error) {
     console.error("Failed to fetch selections:", error)
     return { success: false, error: "Failed to fetch selections" }
