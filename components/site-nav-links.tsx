@@ -20,19 +20,33 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
   )
 }
 
-export function SiteNavLinks({ isAuthenticated }: { isAuthenticated: boolean }) {
+export function SiteNavLinks({ role }: { role?: "admin" | "customer" }) {
+  if (role === "admin") {
+    return (
+      <div className="flex items-center gap-4">
+        <NavLink href="/">Gallery</NavLink>
+        <NavLink href="/admin">Upload</NavLink>
+        <NavLink href="/admin/selections">Selections</NavLink>
+        <NavLink href="/admin/users">Users</NavLink>
+        <LogoutButton />
+      </div>
+    )
+  }
+
+  if (role === "customer") {
+    return (
+      <div className="flex items-center gap-4">
+        <NavLink href="/">Gallery</NavLink>
+        <LogoutButton />
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-center gap-4">
       <NavLink href="/">Gallery</NavLink>
-      {isAuthenticated ? (
-        <>
-          <NavLink href="/admin">Upload</NavLink>
-          <NavLink href="/admin/selections">Selections</NavLink>
-          <LogoutButton />
-        </>
-      ) : (
-        <NavLink href="/login">Admin Login</NavLink>
-      )}
+      <NavLink href="/account">Sign In</NavLink>
+      <NavLink href="/login">Admin</NavLink>
     </div>
   )
 }

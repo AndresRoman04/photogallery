@@ -1,29 +1,89 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
-import { validateAdminCredentials } from "./auth-credentials"
 
-describe("validateAdminCredentials", () => {
+vi.mock("./prisma", () => ({
+  prisma: { user: { findUnique: vi.fn() } },
+}))
+vi.mock("./password", () => ({
+  verifyPassword: vi.fn(),
+}))
+
+import { prisma } from "./prisma"
+import { verifyPassword } from "./password"
+import { validateUserCredentials } from "./auth-credentials"
+
+describe("validateUserCredentials", () => {
   beforeEach(() => {
-    vi.stubEnv("ADMIN_EMAIL", "admin@example.com")
-    vi.stubEnv("ADMIN_PASSWORD", "correct-password")
+    vi.clearAllMocks()
   })
 
-  it("returns an admin user when credentials match", () => {
-    expect(validateAdminCredentials("admin@example.com", "correct-password")).toEqual({
+  it("returns a user when the email exists and the password matches", async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
       id: "1",
-      name: "Admin",
       email: "admin@example.com",
-    })
+      passwordHash: "hashed",
+      name: "Admin",
+      createdAt: new Date(),
+    } as any)
+    vi.mocked(verifyPassword).mockResolvedValue(true)
+
+    const result = await validateUserCredentials("admin@example.com", "correct-password")
+
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { email: "admin@example.com" } })
+    expect(verifyPassword).toHaveBeenCalledWith("correct-password", "hashed")
+    expect(result).toEqual({ id: "1", name: "Admin", email: "admin@example.com" })
   })
 
-  it("returns null when the password is wrong", () => {
-    expect(validateAdminCredentials("admin@example.com", "wrong")).toBeNull()
+  it("falls back to the email when the user has no name", async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: "1",
+      email: "admin@example.com",
+      passwordHash: "hashed",
+      name: null,
+      createdAt: new Date(),
+    } as any)
+    vi.mocked(verifyPassword).mockResolvedValue(true)
+
+    const result = await validateUserCredentials("admin@example.com", "correct-password")
+    expect(result).toEqual({ id: "1", name: "admin@example.com", email: "admin@example.com" })
   })
 
-  it("returns null when the email is wrong", () => {
-    expect(validateAdminCredentials("someone-else@example.com", "correct-password")).toBeNull()
+  it("returns null when the password is wrong", async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: "1",
+      email: "admin@example.com",
+      passwordHash: "hashed",
+      name: "Admin",
+      createdAt: new Date(),
+    } as any)
+    vi.mocked(verifyPassword).mockResolvedValue(false)
+
+    const result = await validateUserCredentials("admin@example.com", "wrong")
+    expect(result).toBeNull()
   })
 
-  it("returns null when credentials are undefined", () => {
-    expect(validateAdminCredentials(undefined, undefined)).toBeNull()
+  it("returns null when no user matches the email", async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
+
+    const result = await validateUserCredentials("someone-else@example.com", "correct-password")
+    expect(result).toBeNull()
+    expect(verifyPassword).not.toHaveBeenCalled()
+  })
+
+  it("returns null when credentials are undefined", async () => {
+    const result = await validateUserCredentials(undefined, undefined)
+    expect(result).toBeNull()
+    expect(prisma.user.findUnique).not.toHaveBeenCalled()
+  })
+
+  it("returns null when credentials are empty strings", async () => {
+    const result = await validateUserCredentials("", "")
+    expect(result).toBeNull()
+    expect(prisma.user.findUnique).not.toHaveBeenCalled()
+  })
+
+  it("returns null when credentials are non-string values", async () => {
+    const result = await validateUserCredentials(123, { not: "a string" })
+    expect(result).toBeNull()
+    expect(prisma.user.findUnique).not.toHaveBeenCalled()
   })
 })

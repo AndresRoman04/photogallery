@@ -14,4 +14,7 @@ export default defineConfig({
     // without a real DATABASE_URL — never used to open an actual connection.
     url: process.env.DATABASE_URL || "postgresql://invalid:invalid@invalid-host:5432/invalid",
   },
+  migrations: {
+    seed: "tsx prisma/seed.ts",
+  },
 })

@@ -1,9 +1,19 @@
-// Extracted from lib/auth.ts so the admin-credential check can be unit tested
+// Extracted from lib/auth.ts so the credential check can be unit tested
 // without importing the `next-auth` package, which pulls in Next.js server
 // internals not resolvable outside Next's own runtime.
-export function validateAdminCredentials(email: unknown, password: unknown) {
-  if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
-    return { id: "1", name: "Admin", email: email as string }
+import { prisma } from "./prisma"
+import { verifyPassword } from "./password"
+
+export async function validateUserCredentials(email: unknown, password: unknown) {
+  if (typeof email !== "string" || typeof password !== "string" || !email || !password) {
+    return null
   }
-  return null
+
+  const user = await prisma.user.findUnique({ where: { email } })
+  if (!user) return null
+
+  const isValid = await verifyPassword(password, user.passwordHash)
+  if (!isValid) return null
+
+  return { id: user.id, name: user.name ?? user.email, email: user.email }
 }
