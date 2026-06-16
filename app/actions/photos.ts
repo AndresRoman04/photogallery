@@ -1,7 +1,7 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
-import { uploadFile, getPublicUrl } from "@/lib/storage"
+import { uploadFile, getPublicUrl, deleteFile } from "@/lib/storage"
 import { revalidatePath } from "next/cache"
 import { Resend } from "resend"
 
@@ -32,17 +32,10 @@ export async function getSelectionsAction(page = 1, pageSize = 10) {
         orderBy: { createdAt: "desc" },
         skip,
         take: pageSize,
+        include: { photos: { include: { photo: true } } },
       }),
       prisma.customerSelection.count(),
     ])
-
-    // Fetch all photos for these selections
-    const allPhotoIds = [...new Set(selections.flatMap((s: { selectedPhotos: string[] }) => s.selectedPhotos))]
-    const photos = await prisma.photo.findMany({
-      where: { id: { in: allPhotoIds } },
-    })
-
-    const photosMap = new Map(photos.map((p) => [p.id, p]))
 
     const groupedSelections = selections.map((s) => ({
       id: s.id,
@@ -50,9 +43,7 @@ export async function getSelectionsAction(page = 1, pageSize = 10) {
       customerName: s.customerName,
       notes: s.notes,
       createdAt: s.createdAt,
-      photos: s.selectedPhotos
-        .map((id) => photosMap.get(id))
-        .filter((p): p is NonNullable<typeof p> => p !== undefined),
+      photos: s.photos.map((sp) => sp.photo),
     }))
 
     return { success: true, selections: groupedSelections, total, page, pageSize }
@@ -74,7 +65,7 @@ export async function submitSelectionAction(data: {
         customerEmail: data.customerEmail,
         customerName: data.customerName,
         notes: data.notes,
-        selectedPhotos: data.selectedPhotos,
+        photos: { create: data.selectedPhotos.map((photoId) => ({ photoId })) },
       },
     })
 
@@ -166,5 +157,28 @@ export async function uploadPhotoAction(formData: FormData) {
   } catch (error) {
     console.error("Failed to upload photo:", error)
     return { success: false, error: "Upload failed" }
+  }
+}
+
+export async function deletePhotoAction(photoId: string) {
+  try {
+    const photo = await prisma.photo.delete({ where: { id: photoId } })
+
+    // Cascade on selection_photos already removed it from any customer selections.
+    // Best-effort cleanup of the underlying object; a missing storage object shouldn't
+    // block the DB delete from being reported as successful.
+    try {
+      await deleteFile(photo.storagePath)
+    } catch (storageError) {
+      console.error("Failed to delete photo from storage:", storageError)
+    }
+
+    revalidatePath("/admin")
+    revalidatePath("/")
+
+    return { success: true }
+  } catch (error) {
+    console.error("Failed to delete photo:", error)
+    return { success: false, error: "Delete failed" }
   }
 }

@@ -18,6 +18,8 @@ model Photo {
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
+  selections   SelectionPhoto[]
+
   @@index([isActive, createdAt(sort: Desc)])
   @@map("photos")
 }
@@ -27,9 +29,20 @@ model CustomerSelection {
   customerEmail  String   @map("customer_email")
   customerName   String?  @map("customer_name")
   notes          String?
-  selectedPhotos String[] @map("selected_photos") @db.Uuid
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  photos         SelectionPhoto[]
 
   @@index([createdAt(sort: Desc)])
   @@map("customer_selections")
+}
+
+model SelectionPhoto {
+  selectionId String            @map("selection_id") @db.Uuid
+  photoId     String            @map("photo_id") @db.Uuid
+  selection   CustomerSelection @relation(fields: [selectionId], references: [id], onDelete: Cascade)
+  photo       Photo             @relation(fields: [photoId], references: [id], onDelete: Cascade)
+
+  @@id([selectionId, photoId])
+  @@map("selection_photos")
 }
