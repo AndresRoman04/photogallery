@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Heart, Mail, CheckCircle, Sparkles } from "lucide-react"
+import { Heart, Mail, CheckCircle } from "lucide-react"
 import { toast } from "sonner"
 import {
   Pagination,
@@ -51,22 +51,20 @@ export function PhotoGallery() {
 
   const loadPhotos = async (page: number) => {
     try {
-      console.log("[v0] Starting to load photos...")
       setLoading(true)
       const result = await getPhotosAction(page, PAGE_SIZE)
 
       if (result.success && result.photos) {
-        console.log("[v0] Photos loaded successfully:", result.photos.length, "photos")
         setPhotos(result.photos as any)
         setCurrentPage(page)
         setTotalPages(Math.ceil((result.total ?? 0) / PAGE_SIZE))
         setError(null)
       } else {
-        console.error("[v0] Error loading photos:", result.error)
+        console.error("Error loading photos:", result.error)
         setError("Failed to load photos. Please try again.")
       }
     } catch (err) {
-      console.error("[v0] Unexpected error loading photos:", err)
+      console.error("Unexpected error loading photos:", err)
       setError("Failed to connect to database. Please check your connection.")
     } finally {
       setLoading(false)
@@ -95,8 +93,6 @@ export function PhotoGallery() {
     setSubmitting(true)
 
     try {
-      console.log("[v0] Submitting customer selection...")
-      
       const result = await submitSelectionAction({
         customerEmail,
         customerName: customerName || null,
@@ -105,7 +101,7 @@ export function PhotoGallery() {
       })
 
       if (!result.success) {
-        console.error("[v0] Error submitting selections:", result.error)
+        console.error("Error submitting selections:", result.error)
         toast.error("Failed to submit selections. Please try again.")
         return
       }
@@ -121,7 +117,7 @@ export function PhotoGallery() {
         setSubmitted(false)
       }, 3000)
     } catch (error) {
-      console.error("[v0] Submission error:", error)
+      console.error("Submission error:", error)
       toast.error("Failed to submit selections. Please try again.")
     } finally {
       setSubmitting(false)
@@ -133,7 +129,7 @@ export function PhotoGallery() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[...Array(6)].map((_, i) => (
           <Card key={i} className="overflow-hidden border border-muted bg-card shadow-md">
-            <div className="relative h-64 bg-muted shimmer-gradient">
+            <div className="relative aspect-[4/3] bg-muted shimmer-gradient">
               <div className="absolute top-3 right-3 w-8 h-8 rounded bg-background/50 backdrop-blur-sm animate-pulse"></div>
             </div>
             <CardContent className="p-4 space-y-3">
@@ -148,10 +144,10 @@ export function PhotoGallery() {
 
   if (error) {
     return (
-      <Card className="p-8 text-center bg-gradient-to-br from-red-50 to-pink-50 border-red-200 shadow-lg">
-        <h2 className="text-xl font-bold text-red-800 mb-2">Connection Error</h2>
-        <p className="text-red-700 mb-4">{error}</p>
-        <Button onClick={() => loadPhotos(currentPage)} variant="outline" className="hover:bg-red-50 transition-colors bg-transparent">
+      <Card className="p-8 text-center">
+        <h2 className="text-xl font-bold text-destructive mb-2">Connection Error</h2>
+        <p className="text-muted-foreground mb-4">{error}</p>
+        <Button onClick={() => loadPhotos(currentPage)} variant="outline">
           Try Again
         </Button>
       </Card>
@@ -160,16 +156,10 @@ export function PhotoGallery() {
 
   if (submitted) {
     return (
-      <Card className="p-8 text-center bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 border-green-200 shadow-xl">
-        <div className="relative">
-          <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4 animate-bounce" />
-          <Sparkles className="h-6 w-6 text-yellow-500 absolute top-0 right-1/3 animate-pulse" />
-          <Sparkles className="h-4 w-4 text-pink-500 absolute bottom-2 left-1/3 animate-pulse delay-300" />
-        </div>
-        <h2 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text text-transparent mb-2">
-          Thank You!
-        </h2>
-        <p className="text-green-700 text-lg">
+      <Card className="p-8 text-center">
+        <CheckCircle className="h-16 w-16 text-primary mx-auto mb-4 animate-bounce" />
+        <h2 className="text-3xl font-light tracking-tight mb-2">Thank You!</h2>
+        <p className="text-muted-foreground text-lg">
           Your photo selections have been submitted successfully. We'll be in touch soon!
         </p>
       </Card>
@@ -179,19 +169,15 @@ export function PhotoGallery() {
   return (
     <div className="space-y-6">
       {selectedPhotos.size > 0 && !showEmailForm && (
-        <Card className="p-4 bg-gradient-to-r from-purple-50 via-pink-50 to-blue-50 border-purple-200 shadow-md animate-in slide-in-from-top duration-300">
+        <Card className="p-4 animate-in slide-in-from-top duration-300">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Heart className="h-5 w-5 text-pink-500 animate-pulse" />
-              <span className="text-sm font-medium bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              <Heart className="h-5 w-5 text-primary" />
+              <span className="text-sm font-medium text-foreground">
                 {selectedPhotos.size} photo{selectedPhotos.size > 1 ? "s" : ""} selected
               </span>
             </div>
-            <Button
-              size="sm"
-              onClick={handleContinueWithSelection}
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-            >
+            <Button size="sm" onClick={handleContinueWithSelection}>
               Continue with Selection
             </Button>
           </div>
@@ -199,17 +185,17 @@ export function PhotoGallery() {
       )}
 
       {showEmailForm && (
-        <Card className="p-6 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-blue-200 shadow-xl animate-in slide-in-from-bottom duration-500">
+        <Card className="p-6 animate-in slide-in-from-bottom duration-500">
           <CardHeader className="px-0 pt-0">
-            <CardTitle className="flex items-center gap-2 text-transparent bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text">
-              <Mail className="h-5 w-5 text-blue-600" />
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
               Complete Your Selection
             </CardTitle>
           </CardHeader>
           <CardContent className="px-0 pb-0">
             <div className="space-y-4">
-              <div className="text-sm text-blue-700 mb-4 p-3 bg-white/50 rounded-lg border border-blue-100">
-                ✨ You've selected {selectedPhotos.size} photo{selectedPhotos.size > 1 ? "s" : ""}. Please provide your
+              <div className="text-sm text-muted-foreground mb-4 p-3 bg-muted rounded-lg border border-border">
+                You've selected {selectedPhotos.size} photo{selectedPhotos.size > 1 ? "s" : ""}. Please provide your
                 contact information so we can get in touch with you.
               </div>
 
@@ -252,11 +238,11 @@ export function PhotoGallery() {
                 <Button
                   onClick={submitSelection}
                   disabled={!customerEmail || submitting}
-                  className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                  className="flex-1"
                 >
                   {submitting ? (
                     <span className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"></div>
                       Submitting...
                     </span>
                   ) : (
@@ -267,7 +253,6 @@ export function PhotoGallery() {
                   variant="outline"
                   onClick={() => setShowEmailForm(false)}
                   disabled={submitting}
-                  className="hover:bg-purple-50 transition-colors"
                 >
                   Back
                 </Button>
@@ -281,47 +266,47 @@ export function PhotoGallery() {
         {photos.map((photo, index) => (
           <Card
             key={photo.id}
-            className="group overflow-hidden hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 animate-in fade-in slide-in-from-bottom"
+            className="group overflow-hidden hover:shadow-xl transition-all duration-500 transform hover:-translate-y-1 animate-in fade-in slide-in-from-bottom"
             style={{ animationDelay: `${index * 100}ms` }}
           >
-            <div className="relative h-64 overflow-hidden">
+            <div className="relative aspect-[4/3] overflow-hidden">
               <Image
                 src={photo.imageUrl || "/placeholder.svg"}
                 alt={photo.title}
                 fill
-                className="object-cover transition-all duration-700 group-hover:scale-110"
+                className="object-cover transition-all duration-700 group-hover:scale-105"
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               <Button
                 variant={selectedPhotos.has(photo.id) ? "default" : "secondary"}
                 size="sm"
                 className={`absolute top-3 right-3 transition-all duration-300 transform ${
                   selectedPhotos.has(photo.id)
-                    ? "opacity-100 scale-110 bg-gradient-to-r from-pink-500 to-red-500 text-white shadow-lg"
-                    : "opacity-0 group-hover:opacity-100 hover:scale-110 bg-white/90 backdrop-blur-sm"
+                    ? "opacity-100 scale-110 bg-primary text-primary-foreground shadow-lg"
+                    : "opacity-0 group-hover:opacity-100 hover:scale-110 bg-background/90 backdrop-blur-sm"
                 }`}
                 onClick={() => togglePhotoSelection(photo.id)}
                 disabled={showEmailForm}
               >
                 <Heart
                   className={`h-4 w-4 transition-all duration-300 ${
-                    selectedPhotos.has(photo.id) ? "fill-current animate-pulse" : ""
+                    selectedPhotos.has(photo.id) ? "fill-current" : ""
                   }`}
                 />
               </Button>
               {selectedPhotos.has(photo.id) && (
-                <div className="absolute top-3 left-3 bg-gradient-to-r from-pink-500 to-red-500 text-white text-xs px-2 py-1 rounded-full font-medium animate-in slide-in-from-left">
+                <div className="absolute top-3 left-3 bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full font-medium animate-in slide-in-from-left">
                   Selected
                 </div>
               )}
             </div>
-            <CardContent className="p-4 bg-gradient-to-br from-white to-gray-50">
-              <h3 className="font-semibold mb-1 text-gray-800 group-hover:text-purple-600 transition-colors duration-300">
+            <CardContent className="p-4">
+              <h3 className="font-semibold mb-1 text-card-foreground group-hover:text-primary transition-colors duration-300">
                 {photo.title}
               </h3>
               {photo.description && (
-                <p className="text-sm text-gray-600 group-hover:text-gray-700 transition-colors duration-300">
+                <p className="text-sm text-muted-foreground">
                   {photo.description}
                 </p>
               )}
@@ -375,13 +360,12 @@ export function PhotoGallery() {
       )}
 
       {photos.length === 0 && !error && (
-        <Card className="p-8 text-center bg-gradient-to-br from-gray-50 to-blue-50 shadow-lg">
+        <Card className="p-8 text-center">
           <div className="text-6xl mb-4">📸</div>
-          <p className="text-gray-600 text-lg">No photos available yet.</p>
-          <p className="text-gray-500 text-sm mt-2">Check back soon for new additions!</p>
+          <p className="text-foreground text-lg">No photos available yet.</p>
+          <p className="text-muted-foreground text-sm mt-2">Check back soon for new additions!</p>
         </Card>
       )}
     </div>
   )
 }
-
