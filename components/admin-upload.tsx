@@ -16,7 +16,7 @@ interface UploadedPhoto {
   id: string
   imageUrl: string
   title: string
-  description: string
+  description: string | null
 }
 
 export function AdminUpload() {
@@ -72,7 +72,7 @@ export function AdminUpload() {
         const result = await uploadPhotoAction(formData)
 
         if (result.success && result.photo) {
-          newPhotos.push(result.photo as any)
+          newPhotos.push(result.photo)
           toast.success(`Successfully uploaded "${photoTitle}"`)
         } else {
           console.error("Upload failed for file:", file.name, result.error)

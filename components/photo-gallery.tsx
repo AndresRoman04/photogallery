@@ -55,7 +55,7 @@ export function PhotoGallery() {
       const result = await getPhotosAction(page, PAGE_SIZE)
 
       if (result.success && result.photos) {
-        setPhotos(result.photos as any)
+        setPhotos(result.photos)
         setCurrentPage(page)
         setTotalPages(Math.ceil((result.total ?? 0) / PAGE_SIZE))
         setError(null)
