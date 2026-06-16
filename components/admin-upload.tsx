@@ -27,9 +27,13 @@ export function AdminUpload() {
   const [descriptions, setDescriptions] = useState<{ [key: string]: string }>({})
   const [previews, setPreviews] = useState<{ [key: string]: string }>({})
 
+  const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"])
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    const imageFiles = files.filter((file) => file.type.startsWith("image/"))
+    const imageFiles = files.filter((file) => ALLOWED_TYPES.has(file.type))
+    const rejectedFiles = files.filter((file) => !ALLOWED_TYPES.has(file.type))
+    rejectedFiles.forEach((file) => toast.error(`"${file.name}" is not a supported image type.`))
     const newPreviews: { [key: string]: string } = {}
     imageFiles.forEach((file) => {
       newPreviews[file.name] = URL.createObjectURL(file)
@@ -106,7 +110,7 @@ export function AdminUpload() {
               id="photo-upload"
               type="file"
               multiple
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,image/gif"
               onChange={handleFileSelect}
               className="mt-1"
             />

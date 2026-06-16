@@ -107,6 +107,15 @@ export async function submitSelectionAction(data: {
   }
 }
 
+const ALLOWED_CONTENT_TYPES: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+}
+const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024 // 8MB, under the 10mb Server Actions body limit
+
 export async function uploadPhotoAction(formData: FormData) {
   try {
     const file = formData.get("file") as File
@@ -115,11 +124,26 @@ export async function uploadPhotoAction(formData: FormData) {
 
     if (!file) throw new Error("No file provided")
 
-    const fileExt = file.name.split(".").pop()
+    const fileExt = file.name.split(".").pop()?.toLowerCase() ?? ""
+    const expectedContentType = ALLOWED_CONTENT_TYPES[fileExt]
+
+    if (!expectedContentType) {
+      return { success: false, error: "Unsupported file extension. Allowed: JPG, PNG, WEBP, GIF." }
+    }
+
+    if (file.type !== expectedContentType) {
+      return { success: false, error: "File content type does not match its extension." }
+    }
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      return { success: false, error: "File too large. Maximum size is 8MB." }
+    }
+
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
 
-    // 1. Upload to S3/MinIO
-    await uploadFile(fileName, file, file.type)
+    // 1. Upload to S3/MinIO — re-derive the content type from the validated extension
+    // rather than trusting the client-declared file.type all the way to storage.
+    await uploadFile(fileName, file, expectedContentType)
 
     // 2. Get Public URL
     const publicUrl = await getPublicUrl(fileName)
