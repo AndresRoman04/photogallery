@@ -9,6 +9,31 @@ datasource db {
   provider = "postgresql"
 }
 
+model User {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("users")
+}
+
+// Public-facing customer accounts (gallery visitors). Kept separate from the
+// admin `User` model: customer accounts never grant access to /admin, they
+// only exist so a customer's email is on record (and so they can log back in)
+// across sessions. passwordHash is null for OAuth-only accounts (Google/Facebook).
+model CustomerAccount {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String   @unique
+  passwordHash String?  @map("password_hash")
+  name         String?
+  provider     String   @default("credentials")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("customer_accounts")
+}
+
 model Photo {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   title        String

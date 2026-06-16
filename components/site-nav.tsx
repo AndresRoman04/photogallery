@@ -5,7 +5,7 @@ import { SiteNavLinks } from "@/components/site-nav-links"
 
 export async function SiteNav() {
   const session = await auth()
-  const isAuthenticated = !!session?.user
+  const role = session?.user?.role
 
   return (
     <header className="border-b sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -14,7 +14,7 @@ export async function SiteNav() {
           <Camera className="h-5 w-5" />
           Photo Gallery
         </Link>
-        <SiteNavLinks isAuthenticated={isAuthenticated} />
+        <SiteNavLinks role={role} />
       </nav>
     </header>
   )

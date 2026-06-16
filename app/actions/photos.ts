@@ -80,10 +80,18 @@ export async function submitSelectionAction(data: {
       const photoList = photos.map((p) => `- ${p.title} (${p.storagePath})`).join("\n")
       const emailContent = `New Photo Selection Received!\n\nCustomer Details:\n- Email: ${data.customerEmail}\n- Name: ${data.customerName || "Not provided"}\n\nSelected Photos (${data.selectedPhotos.length}):\n${photoList}\n\n${data.notes ? `Additional Notes:\n${data.notes}\n\n` : ""}---\nThis notification was sent automatically from your Photo Gallery.`
 
+      // NOTIFICATION_EMAIL is the dedicated recipient for these alerts; ADMIN_EMAIL is
+      // kept only as a fallback for deployments that haven't set it yet (it now mainly
+      // seeds the first DB-backed user — see prisma/seed.ts and lib/auth-credentials.ts).
+      const notificationRecipient = process.env.NOTIFICATION_EMAIL ?? process.env.ADMIN_EMAIL
+      if (!notificationRecipient) {
+        throw new Error("No notification recipient configured (set NOTIFICATION_EMAIL)")
+      }
+
       const resend = new Resend(process.env.RESEND_API_KEY)
       await resend.emails.send({
         from: process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev",
-        to: process.env.ADMIN_EMAIL!,
+        to: notificationRecipient,
         subject: `New Photo Selection from ${data.customerEmail}`,
         text: emailContent,
       })
