@@ -25,14 +25,29 @@ export function AdminUpload() {
   const [uploadedPhotos, setUploadedPhotos] = useState<UploadedPhoto[]>([])
   const [titles, setTitles] = useState<{ [key: string]: string }>({})
   const [descriptions, setDescriptions] = useState<{ [key: string]: string }>({})
+  const [previews, setPreviews] = useState<{ [key: string]: string }>({})
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     const imageFiles = files.filter((file) => file.type.startsWith("image/"))
+    const newPreviews: { [key: string]: string } = {}
+    imageFiles.forEach((file) => {
+      newPreviews[file.name] = URL.createObjectURL(file)
+    })
+    setPreviews((prev) => ({ ...prev, ...newPreviews }))
     setSelectedFiles((prev) => [...prev, ...imageFiles])
   }
 
   const removeFile = (index: number) => {
+    const file = selectedFiles[index]
+    if (previews[file.name]) {
+      URL.revokeObjectURL(previews[file.name])
+      setPreviews((prev) => {
+        const next = { ...prev }
+        delete next[file.name]
+        return next
+      })
+    }
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
@@ -43,7 +58,6 @@ export function AdminUpload() {
     const newPhotos: UploadedPhoto[] = []
 
     try {
-      console.log("[v0] Starting photo upload process...")
       for (const file of selectedFiles) {
         const formData = new FormData()
         formData.append("file", file)
@@ -54,22 +68,22 @@ export function AdminUpload() {
         const result = await uploadPhotoAction(formData)
 
         if (result.success && result.photo) {
-          console.log("[v0] Photo saved successfully:", result.photo)
           newPhotos.push(result.photo as any)
           toast.success(`Successfully uploaded "${photoTitle}"`)
         } else {
-          console.error("[v0] Upload failed for file:", file.name, result.error)
+          console.error("Upload failed for file:", file.name, result.error)
           toast.error(`Failed to upload "${file.name}": ${result.error || "Unknown error"}`)
         }
       }
 
+      Object.values(previews).forEach((url) => URL.revokeObjectURL(url))
       setUploadedPhotos((prev) => [...prev, ...newPhotos])
       setSelectedFiles([])
       setTitles({})
       setDescriptions({})
-      console.log("[v0] Upload process completed successfully")
+      setPreviews({})
     } catch (error) {
-      console.error("[v0] Upload failed:", error)
+      console.error("Upload failed:", error)
       toast.error("Upload failed. Please try again.")
     } finally {
       setUploading(false)
@@ -106,7 +120,18 @@ export function AdminUpload() {
                   <Card key={index} className="p-4">
                     <div className="flex items-start gap-4">
                       <div className="flex-shrink-0">
-                        <ImageIcon className="h-12 w-12 text-muted-foreground" />
+                        {previews[file.name] ? (
+                          <div className="relative h-16 w-16 overflow-hidden rounded-md">
+                            <Image
+                              src={previews[file.name]}
+                              alt={file.name}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <ImageIcon className="h-12 w-12 text-muted-foreground" />
+                        )}
                       </div>
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center justify-between">
@@ -192,4 +217,3 @@ export function AdminUpload() {
     </div>
   )
 }
-
