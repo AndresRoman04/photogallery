@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3"
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 
 const s3Client = new S3Client({
@@ -29,4 +29,13 @@ export async function getPublicUrl(fileName: string) {
   // Use a separate public endpoint if provided (e.g. localhost:9000 for browser)
   const publicEndpoint = process.env.NEXT_PUBLIC_STORAGE_ENDPOINT || process.env.STORAGE_ENDPOINT
   return `${publicEndpoint}/${BUCKET_NAME}/${fileName}`
+}
+
+export async function deleteFile(fileName: string) {
+  const command = new DeleteObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: fileName,
+  })
+
+  await s3Client.send(command)
 }

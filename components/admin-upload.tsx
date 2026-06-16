@@ -1,15 +1,26 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
-import { uploadPhotoAction } from "@/app/actions/photos"
+import { useState, useEffect } from "react"
+import { uploadPhotoAction, getPhotosAction, deletePhotoAction } from "@/app/actions/photos"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Upload, X, ImageIcon } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Upload, X, ImageIcon, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 interface UploadedPhoto {
@@ -22,10 +33,42 @@ interface UploadedPhoto {
 export function AdminUpload() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
-  const [uploadedPhotos, setUploadedPhotos] = useState<UploadedPhoto[]>([])
   const [titles, setTitles] = useState<{ [key: string]: string }>({})
   const [descriptions, setDescriptions] = useState<{ [key: string]: string }>({})
   const [previews, setPreviews] = useState<{ [key: string]: string }>({})
+  const [existingPhotos, setExistingPhotos] = useState<UploadedPhoto[]>([])
+  const [loadingExisting, setLoadingExisting] = useState(true)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    loadExistingPhotos()
+  }, [])
+
+  const loadExistingPhotos = async () => {
+    setLoadingExisting(true)
+    const result = await getPhotosAction(1, 100)
+    if (result.success && result.photos) {
+      setExistingPhotos(result.photos)
+    } else {
+      console.error("Error loading existing photos:", result.error)
+    }
+    setLoadingExisting(false)
+  }
+
+  const handleDeletePhoto = async (photoId: string) => {
+    setDeletingId(photoId)
+    try {
+      const result = await deletePhotoAction(photoId)
+      if (result.success) {
+        setExistingPhotos((prev) => prev.filter((p) => p.id !== photoId))
+        toast.success("Photo deleted")
+      } else {
+        toast.error(result.error || "Failed to delete photo")
+      }
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"])
 
@@ -81,7 +124,7 @@ export function AdminUpload() {
       }
 
       Object.values(previews).forEach((url) => URL.revokeObjectURL(url))
-      setUploadedPhotos((prev) => [...prev, ...newPhotos])
+      setExistingPhotos((prev) => [...newPhotos, ...prev])
       setSelectedFiles([])
       setTitles({})
       setDescriptions({})
@@ -190,14 +233,18 @@ export function AdminUpload() {
         </CardContent>
       </Card>
 
-      {uploadedPhotos.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Recently Uploaded</CardTitle>
-          </CardHeader>
-          <CardContent>
+      <Card>
+        <CardHeader>
+          <CardTitle>Manage Photos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loadingExisting ? (
+            <p className="text-sm text-muted-foreground">Loading photos...</p>
+          ) : existingPhotos.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No photos uploaded yet.</p>
+          ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {uploadedPhotos.map((photo) => (
+              {existingPhotos.map((photo) => (
                 <div key={photo.id} className="space-y-2">
                   <div className="relative h-48 w-full overflow-hidden rounded-lg">
                     <Image
@@ -208,16 +255,43 @@ export function AdminUpload() {
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
                   </div>
-                  <div>
-                    <h4 className="font-medium">{photo.title}</h4>
-                    {photo.description && <p className="text-sm text-muted-foreground">{photo.description}</p>}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="font-medium">{photo.title}</h4>
+                      {photo.description && <p className="text-sm text-muted-foreground">{photo.description}</p>}
+                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={deletingId === photo.id}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete "{photo.title}"?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently remove the photo and its file from storage. This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeletePhoto(photo.id)}>
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
