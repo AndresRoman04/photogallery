@@ -46,7 +46,7 @@ export function AdminSelections() {
     const result = await getSelectionsAction(page, PAGE_SIZE)
 
     if (result.success && result.selections) {
-      setSelections(result.selections as any)
+      setSelections(result.selections)
       setCurrentPage(page)
       setTotalPages(Math.ceil((result.total ?? 0) / PAGE_SIZE))
     } else {

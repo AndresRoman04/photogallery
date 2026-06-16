@@ -52,7 +52,7 @@ export async function getSelectionsAction(page = 1, pageSize = 10) {
       createdAt: s.createdAt,
       photos: s.selectedPhotos
         .map((id) => photosMap.get(id))
-        .filter(Boolean),
+        .filter((p): p is NonNullable<typeof p> => p !== undefined),
     }))
 
     return { success: true, selections: groupedSelections, total, page, pageSize }
