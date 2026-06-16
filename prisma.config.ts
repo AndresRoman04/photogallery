@@ -10,7 +10,8 @@ import { defineConfig } from "prisma/config"
 export default defineConfig({
   schema: "prisma/schema.prisma",
   datasource: {
-    // Use a dummy fallback for build-time validation (e.g. during npx prisma generate)
-    url: process.env.DATABASE_URL || "postgresql://postgres:password@localhost:5432/photogallery",
+    // Dummy, non-connectable placeholder so `prisma generate` can validate config shape
+    // without a real DATABASE_URL — never used to open an actual connection.
+    url: process.env.DATABASE_URL || "postgresql://invalid:invalid@invalid-host:5432/invalid",
   },
 })

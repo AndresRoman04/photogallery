@@ -6,7 +6,10 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-const connectionString = process.env.DATABASE_URL || "postgresql://postgres:password@localhost:5432/photogallery"
+const connectionString = process.env.DATABASE_URL
+if (!connectionString) {
+  throw new Error("DATABASE_URL environment variable is not set")
+}
 
 const pool = new Pool({ connectionString })
 const adapter = new PrismaPg(pool)
