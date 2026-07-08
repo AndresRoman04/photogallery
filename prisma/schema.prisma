@@ -84,3 +84,19 @@ model SelectionPhoto {
   @@id([selectionId, photoId])
   @@map("selection_photos")
 }
+
+// Login attempt throttling (BFT-32). `scope` keeps admin and customer
+// lockouts independent even if the same email string were ever used in
+// both tables — those are otherwise fully separate identities (see
+// lib/auth.ts's comment on the two non-overlapping providers).
+model LoginAttempt {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  identifier  String
+  scope       String
+  failedCount Int       @default(0) @map("failed_count")
+  lockedUntil DateTime? @map("locked_until") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([identifier, scope])
+  @@map("login_attempts")
+}

@@ -6,14 +6,21 @@ vi.mock("./prisma", () => ({
 vi.mock("./password", () => ({
   verifyPassword: vi.fn(),
 }))
+vi.mock("./login-throttle", () => ({
+  isLockedOut: vi.fn().mockResolvedValue(false),
+  recordFailure: vi.fn(),
+  recordSuccess: vi.fn(),
+}))
 
 import { prisma } from "./prisma"
 import { verifyPassword } from "./password"
+import { isLockedOut, recordFailure, recordSuccess } from "./login-throttle"
 import { validateUserCredentials } from "./auth-credentials"
 
 describe("validateUserCredentials", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(isLockedOut).mockResolvedValue(false)
   })
 
   it("returns a user when the email exists and the password matches", async () => {
@@ -31,6 +38,7 @@ describe("validateUserCredentials", () => {
     expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { email: "admin@example.com" } })
     expect(verifyPassword).toHaveBeenCalledWith("correct-password", "hashed")
     expect(result).toEqual({ id: "1", name: "Admin", email: "admin@example.com" })
+    expect(recordSuccess).toHaveBeenCalledWith("admin@example.com", "admin")
   })
 
   it("falls back to the email when the user has no name", async () => {
@@ -59,6 +67,7 @@ describe("validateUserCredentials", () => {
 
     const result = await validateUserCredentials("admin@example.com", "wrong")
     expect(result).toBeNull()
+    expect(recordFailure).toHaveBeenCalledWith("admin@example.com", "admin")
   })
 
   it("returns null when no user matches the email", async () => {
@@ -66,6 +75,15 @@ describe("validateUserCredentials", () => {
 
     const result = await validateUserCredentials("someone-else@example.com", "correct-password")
     expect(result).toBeNull()
+    expect(verifyPassword).not.toHaveBeenCalled()
+  })
+
+  it("returns null without checking the password when the account is locked out", async () => {
+    vi.mocked(isLockedOut).mockResolvedValue(true)
+
+    const result = await validateUserCredentials("admin@example.com", "correct-password")
+    expect(result).toBeNull()
+    expect(prisma.user.findUnique).not.toHaveBeenCalled()
     expect(verifyPassword).not.toHaveBeenCalled()
   })
 
