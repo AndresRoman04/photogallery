@@ -239,7 +239,15 @@ export function AdminUpload() {
         </CardHeader>
         <CardContent>
           {loadingExisting ? (
-            <p className="text-sm text-muted-foreground">Loading photos...</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="h-48 w-full bg-muted shimmer-gradient rounded-lg"></div>
+                  <div className="h-4 bg-muted shimmer-gradient rounded w-2/3"></div>
+                  <div className="h-3 bg-muted shimmer-gradient rounded w-1/2"></div>
+                </div>
+              ))}
+            </div>
           ) : existingPhotos.length === 0 ? (
             <p className="text-sm text-muted-foreground">No photos uploaded yet.</p>
           ) : (
