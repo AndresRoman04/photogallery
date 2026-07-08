@@ -2,6 +2,7 @@ import Link from "next/link"
 import { Camera } from "lucide-react"
 import { auth } from "@/lib/auth"
 import { SiteNavLinks } from "@/components/site-nav-links"
+import { ModeToggle } from "@/components/mode-toggle"
 
 export async function SiteNav() {
   const session = await auth()
@@ -14,7 +15,10 @@ export async function SiteNav() {
           <Camera className="h-5 w-5" />
           Photo Gallery
         </Link>
-        <SiteNavLinks role={role} />
+        <div className="flex items-center gap-2">
+          <SiteNavLinks role={role} />
+          <ModeToggle />
+        </div>
       </nav>
     </header>
   )

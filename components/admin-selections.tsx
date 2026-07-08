@@ -6,7 +6,7 @@ import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Mail, Calendar, User, MessageSquare } from "lucide-react"
+import { Mail, Calendar, User, MessageSquare, Inbox } from "lucide-react"
 import {
   Pagination,
   PaginationContent,
@@ -122,8 +122,16 @@ export function AdminSelections() {
   return (
     <div className="space-y-6">
       {selections.length === 0 ? (
-        <Card className="p-8 text-center">
-          <p className="text-muted-foreground">No customer selections yet.</p>
+        <Card className="p-12">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Inbox className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <p className="font-medium text-foreground">No customer selections yet</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              When customers pick their favorite photos, their selections will appear here.
+            </p>
+          </div>
         </Card>
       ) : (
         <>

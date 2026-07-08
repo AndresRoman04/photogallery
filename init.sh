@@ -30,6 +30,10 @@ NEXTAUTH_URL="http://localhost:3000"
 ADMIN_EMAIL="admin@example.com"
 ADMIN_PASSWORD="adminPassword"
 
+# Branding: shown in the home hero and footer. Baked into the client bundle at
+# build time (NEXT_PUBLIC_*) — rebuild the app container after changing it.
+# NEXT_PUBLIC_STUDIO_NAME="Photo Gallery"
+
 # Optional: customer sign-in via Google/Facebook at /account. Omit to keep
 # customers limited to email/password registration — no app credentials needed.
 # GOOGLE_CLIENT_ID=""

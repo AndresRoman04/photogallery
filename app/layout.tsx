@@ -5,6 +5,7 @@ import './globals.css'
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from "@/components/theme-provider"
 import { SiteNav } from "@/components/site-nav"
+import { SiteFooter } from "@/components/site-footer"
 
 export const metadata: Metadata = {
   title: "Photo Gallery | Portfolio & Selections",
@@ -21,12 +22,15 @@ export default function RootLayout({
       <body className="antialiased">
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
         >
-          <SiteNav />
-          {children}
+          <div className="flex min-h-svh flex-col">
+            <SiteNav />
+            <div className="flex flex-1 flex-col">{children}</div>
+            <SiteFooter />
+          </div>
           <Toaster />
         </ThemeProvider>
       </body>

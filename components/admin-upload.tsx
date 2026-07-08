@@ -249,7 +249,13 @@ export function AdminUpload() {
               ))}
             </div>
           ) : existingPhotos.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No photos uploaded yet.</p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
+                <ImageIcon className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="font-medium text-foreground">No photos yet</p>
+              <p className="text-sm text-muted-foreground mt-1">Upload your first photo to get started.</p>
+            </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {existingPhotos.map((photo) => (

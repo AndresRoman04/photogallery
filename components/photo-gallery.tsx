@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Heart, Mail, CheckCircle } from "lucide-react"
+import { Check, Heart, Mail, CheckCircle } from "lucide-react"
 import { toast } from "sonner"
 import {
   Pagination,
@@ -88,6 +88,9 @@ export function PhotoGallery({ slug }: { slug: string }) {
 
   const handleContinueWithSelection = () => {
     setShowEmailForm(true)
+    // The contact form renders above the grid — bring it into view since the
+    // trigger lives in the fixed bar at the bottom of the viewport.
+    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   const submitSelection = async () => {
@@ -169,13 +172,15 @@ export function PhotoGallery({ slug }: { slug: string }) {
     )
   }
 
+  const selectionBarVisible = selectedPhotos.size > 0 && !showEmailForm
+
   return (
-    <div className="space-y-6">
-      {selectedPhotos.size > 0 && !showEmailForm && (
-        <Card className="p-4 animate-in slide-in-from-top duration-300">
-          <div className="flex items-center justify-between">
+    <div className={`space-y-6 ${selectionBarVisible ? "pb-24" : ""}`}>
+      {selectionBarVisible && (
+        <div className="fixed bottom-0 inset-x-0 z-40 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 animate-in slide-in-from-bottom duration-300">
+          <div className="container mx-auto px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Heart className="h-5 w-5 text-primary" />
+              <Heart className="h-5 w-5 text-primary fill-current" />
               <span className="text-sm font-medium text-foreground">
                 {selectedPhotos.size} photo{selectedPhotos.size > 1 ? "s" : ""} selected
               </span>
@@ -184,7 +189,7 @@ export function PhotoGallery({ slug }: { slug: string }) {
               Continue with Selection
             </Button>
           </div>
-        </Card>
+        </div>
       )}
 
       {showEmailForm && (
@@ -269,7 +274,9 @@ export function PhotoGallery({ slug }: { slug: string }) {
         {photos.map((photo, index) => (
           <Card
             key={photo.id}
-            className="group overflow-hidden hover:shadow-xl transition-all duration-500 transform hover:-translate-y-1 animate-in fade-in slide-in-from-bottom"
+            className={`group overflow-hidden hover:shadow-xl transition-all duration-500 transform hover:-translate-y-1 animate-in fade-in slide-in-from-bottom ${
+              selectedPhotos.has(photo.id) ? "ring-2 ring-primary" : ""
+            }`}
             style={{ animationDelay: `${index * 100}ms` }}
           >
             <div className="relative aspect-[4/3] overflow-hidden">
@@ -299,7 +306,8 @@ export function PhotoGallery({ slug }: { slug: string }) {
                 />
               </Button>
               {selectedPhotos.has(photo.id) && (
-                <div className="absolute top-3 left-3 bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full font-medium animate-in slide-in-from-left">
+                <div className="absolute top-3 left-3 flex items-center gap-1 bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full font-medium animate-in slide-in-from-left">
+                  <Check className="h-3 w-3" />
                   Selected
                 </div>
               )}
