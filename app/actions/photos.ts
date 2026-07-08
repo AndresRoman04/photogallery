@@ -16,24 +16,63 @@ async function getSessionAdminId() {
   return session.user.id
 }
 
-// Public gallery on `/`: intentionally unscoped — all photographers' active
-// photos mixed together (per-photographer public galleries are BFT-28).
-export async function getPhotosAction(page = 1, pageSize = 12) {
+// Public per-photographer gallery (/gallery/[slug]): only that
+// photographer's active photos.
+export async function getGalleryPhotosAction(slug: string, page = 1, pageSize = 12) {
   try {
+    const user = await prisma.user.findUnique({ where: { slug }, select: { id: true } })
+    if (!user) {
+      return { success: false, error: "Gallery not found" }
+    }
+
+    const where = { userId: user.id, isActive: true }
     const skip = (page - 1) * pageSize
     const [photos, total] = await Promise.all([
       prisma.photo.findMany({
-        where: { isActive: true },
+        where,
         orderBy: { createdAt: "desc" },
         skip,
         take: pageSize,
       }),
-      prisma.photo.count({ where: { isActive: true } }),
+      prisma.photo.count({ where }),
     ])
     return { success: true, photos, total, page, pageSize }
   } catch (error) {
     console.error("Failed to fetch photos:", error)
     return { success: false, error: "Failed to fetch photos" }
+  }
+}
+
+// Public photographer directory on `/`: everyone with at least one active
+// photo, with a cover image for their gallery card.
+export async function getPhotographersAction() {
+  try {
+    const users = await prisma.user.findMany({
+      where: { photos: { some: { isActive: true } } },
+      orderBy: { createdAt: "asc" },
+      select: {
+        name: true,
+        slug: true,
+        photos: {
+          where: { isActive: true },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { imageUrl: true },
+        },
+        _count: { select: { photos: { where: { isActive: true } } } },
+      },
+    })
+
+    const photographers = users.map((u) => ({
+      name: u.name,
+      slug: u.slug,
+      photoCount: u._count.photos,
+      coverImageUrl: u.photos[0]?.imageUrl ?? null,
+    }))
+    return { success: true, photographers }
+  } catch (error) {
+    console.error("Failed to fetch photographers:", error)
+    return { success: false, error: "Failed to fetch photographers" }
   }
 }
 
@@ -64,15 +103,25 @@ export async function getMyPhotosAction(page = 1, pageSize = 12) {
 
 export async function getSelectionsAction(page = 1, pageSize = 10) {
   try {
+    const userId = await getSessionAdminId()
+    if (!userId) {
+      return { success: false, error: "Not authorized" }
+    }
+
+    // Selections have no owner column of their own; they belong to whichever
+    // photographer owns their photos (guaranteed single since
+    // submitSelectionAction rejects mixed-photographer selections).
+    const where = { photos: { some: { photo: { userId } } } }
     const skip = (page - 1) * pageSize
     const [selections, total] = await Promise.all([
       prisma.customerSelection.findMany({
+        where,
         orderBy: { createdAt: "desc" },
         skip,
         take: pageSize,
         include: { photos: { include: { photo: true } } },
       }),
-      prisma.customerSelection.count(),
+      prisma.customerSelection.count({ where }),
     ])
 
     const groupedSelections = selections.map((s) => ({
@@ -98,12 +147,31 @@ export async function submitSelectionAction(data: {
   selectedPhotos: string[]
 }) {
   try {
+    const photoIds = [...new Set(data.selectedPhotos)]
+    if (photoIds.length === 0) {
+      return { success: false, error: "No photos selected" }
+    }
+
+    // The ids come straight from the client — verify they're all real, active,
+    // and belong to a single photographer, so one selection can never mix
+    // photos from two different galleries.
+    const photos = await prisma.photo.findMany({
+      where: { id: { in: photoIds } },
+      select: { id: true, isActive: true, userId: true },
+    })
+    if (photos.length !== photoIds.length || photos.some((p) => !p.isActive)) {
+      return { success: false, error: "Selection includes unavailable photos." }
+    }
+    if (new Set(photos.map((p) => p.userId)).size !== 1) {
+      return { success: false, error: "All selected photos must belong to the same photographer." }
+    }
+
     const selection = await prisma.customerSelection.create({
       data: {
         customerEmail: data.customerEmail,
         customerName: data.customerName,
         notes: data.notes,
-        photos: { create: data.selectedPhotos.map((photoId) => ({ photoId })) },
+        photos: { create: photoIds.map((photoId) => ({ photoId })) },
       },
     })
 
@@ -112,11 +180,11 @@ export async function submitSelectionAction(data: {
     // Send admin notification server-side (no exposed API endpoint needed)
     try {
       const photos = await prisma.photo.findMany({
-        where: { id: { in: data.selectedPhotos } },
+        where: { id: { in: photoIds } },
         select: { title: true, storagePath: true },
       })
       const photoList = photos.map((p) => `- ${p.title} (${p.storagePath})`).join("\n")
-      const emailContent = `New Photo Selection Received!\n\nCustomer Details:\n- Email: ${data.customerEmail}\n- Name: ${data.customerName || "Not provided"}\n\nSelected Photos (${data.selectedPhotos.length}):\n${photoList}\n\n${data.notes ? `Additional Notes:\n${data.notes}\n\n` : ""}---\nThis notification was sent automatically from your Photo Gallery.`
+      const emailContent = `New Photo Selection Received!\n\nCustomer Details:\n- Email: ${data.customerEmail}\n- Name: ${data.customerName || "Not provided"}\n\nSelected Photos (${photoIds.length}):\n${photoList}\n\n${data.notes ? `Additional Notes:\n${data.notes}\n\n` : ""}---\nThis notification was sent automatically from your Photo Gallery.`
 
       // NOTIFICATION_EMAIL is the dedicated recipient for these alerts; ADMIN_EMAIL is
       // kept only as a fallback for deployments that haven't set it yet (it now mainly

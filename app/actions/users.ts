@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { hashPassword } from "@/lib/password"
+import { generateUniqueSlug } from "@/lib/slug"
 import { auth } from "@/lib/auth"
 import { revalidatePath } from "next/cache"
 
@@ -12,7 +13,7 @@ export async function getUsersAction() {
   try {
     const users = await prisma.user.findMany({
       orderBy: { createdAt: "asc" },
-      select: { id: true, email: true, name: true, createdAt: true },
+      select: { id: true, email: true, name: true, slug: true, createdAt: true },
     })
     return { success: true, users }
   } catch (error) {
@@ -34,15 +35,28 @@ export async function createUserAction(data: { email: string; password: string; 
     }
 
     const passwordHash = await hashPassword(password)
+    const name = data.name?.trim() || null
+    // Public gallery URL identifier — from the display name when given, the
+    // email local part otherwise. Fixed for the account's lifetime.
+    const slug = await generateUniqueSlug(name || email.split("@")[0], async (candidate) => {
+      const existing = await prisma.user.findUnique({ where: { slug: candidate }, select: { id: true } })
+      return existing !== null
+    })
     const user = await prisma.user.create({
-      data: { email, passwordHash, name: data.name?.trim() || null },
-      select: { id: true, email: true, name: true, createdAt: true },
+      data: { email, passwordHash, name, slug },
+      select: { id: true, email: true, name: true, slug: true, createdAt: true },
     })
 
     revalidatePath("/admin/users")
     return { success: true, user }
   } catch (error: any) {
     if (error?.code === "P2002") {
+      // Unique violation on email, or on slug if a concurrent create raced
+      // past the uniqueness probe above.
+      const target = String(error?.meta?.target ?? "")
+      if (target.includes("slug")) {
+        return { success: false, error: "Could not reserve a gallery URL for this name. Try again." }
+      }
       return { success: false, error: "A user with that email already exists." }
     }
     console.error("Failed to create user:", error)
@@ -70,7 +84,7 @@ export async function updateUserAction(
     const user = await prisma.user.update({
       where: { id: userId },
       data: updateData,
-      select: { id: true, email: true, name: true, createdAt: true },
+      select: { id: true, email: true, name: true, slug: true, createdAt: true },
     })
 
     revalidatePath("/admin/users")

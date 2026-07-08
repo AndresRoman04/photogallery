@@ -20,6 +20,8 @@ import { getUsersAction, createUserAction, updateUserAction, deleteUserAction } 
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Slug generation probes findUnique for collisions — default to "free".
+  vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
 })
 
 describe("getUsersAction", () => {
@@ -56,10 +58,21 @@ describe("createUserAction", () => {
     const result = await createUserAction({ email: "A@B.com", password: "longenough", name: "  Alice  " })
     expect(hashPassword).toHaveBeenCalledWith("longenough")
     expect(prisma.user.create).toHaveBeenCalledWith({
-      data: { email: "a@b.com", passwordHash: "hashed-password", name: "Alice" },
-      select: { id: true, email: true, name: true, createdAt: true },
+      data: { email: "a@b.com", passwordHash: "hashed-password", name: "Alice", slug: "alice" },
+      select: { id: true, email: true, name: true, slug: true, createdAt: true },
     })
     expect(result.success).toBe(true)
+  })
+
+  it("numbers the slug when the base is already taken", async () => {
+    vi.mocked(prisma.user.findUnique)
+      .mockResolvedValueOnce({ id: "other" } as any) // "alice" taken
+      .mockResolvedValueOnce(null) // "alice-2" free
+    vi.mocked(prisma.user.create).mockResolvedValue({ id: "1" } as any)
+    await createUserAction({ email: "alice@b.com", password: "longenough", name: "Alice" })
+    expect(prisma.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ slug: "alice-2" }) })
+    )
   })
 
   it("returns a friendly error on duplicate email", async () => {
@@ -77,7 +90,7 @@ describe("updateUserAction", () => {
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: "1" },
       data: { name: "New" },
-      select: { id: true, email: true, name: true, createdAt: true },
+      select: { id: true, email: true, name: true, slug: true, createdAt: true },
     })
     expect(result.success).toBe(true)
   })
@@ -95,7 +108,7 @@ describe("updateUserAction", () => {
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: "1" },
       data: { passwordHash: "hashed-password" },
-      select: { id: true, email: true, name: true, createdAt: true },
+      select: { id: true, email: true, name: true, slug: true, createdAt: true },
     })
   })
 })

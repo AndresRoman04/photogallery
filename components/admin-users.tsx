@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import {
   getUsersAction,
   createUserAction,
@@ -39,6 +40,7 @@ interface AdminUser {
   id: string
   email: string
   name: string | null
+  slug: string
   createdAt: Date
 }
 
@@ -206,6 +208,12 @@ export function AdminUsers() {
                     <p className="text-sm text-muted-foreground">
                       {user.email} · Added {formatDate(user.createdAt)}
                     </p>
+                    <Link
+                      href={`/gallery/${user.slug}`}
+                      className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                    >
+                      Gallery: /gallery/{user.slug}
+                    </Link>
                   </div>
                   <div className="flex items-center gap-2">
                     <Dialog

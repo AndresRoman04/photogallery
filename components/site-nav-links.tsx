@@ -24,7 +24,7 @@ export function SiteNavLinks({ role }: { role?: "admin" | "customer" }) {
   if (role === "admin") {
     return (
       <div className="flex items-center gap-4">
-        <NavLink href="/">Gallery</NavLink>
+        <NavLink href="/">Galleries</NavLink>
         <NavLink href="/admin">Upload</NavLink>
         <NavLink href="/admin/selections">Selections</NavLink>
         <NavLink href="/admin/users">Users</NavLink>
@@ -36,7 +36,7 @@ export function SiteNavLinks({ role }: { role?: "admin" | "customer" }) {
   if (role === "customer") {
     return (
       <div className="flex items-center gap-4">
-        <NavLink href="/">Gallery</NavLink>
+        <NavLink href="/">Galleries</NavLink>
         <LogoutButton />
       </div>
     )
@@ -44,7 +44,7 @@ export function SiteNavLinks({ role }: { role?: "admin" | "customer" }) {
 
   return (
     <div className="flex items-center gap-4">
-      <NavLink href="/">Gallery</NavLink>
+      <NavLink href="/">Galleries</NavLink>
       <NavLink href="/account">Sign In</NavLink>
       <NavLink href="/login">Admin</NavLink>
     </div>

@@ -5,6 +5,7 @@
 import "dotenv/config"
 import { prisma } from "../lib/prisma"
 import { hashPassword } from "../lib/password"
+import { generateUniqueSlug } from "../lib/slug"
 
 async function main() {
   const existingUserCount = await prisma.user.count()
@@ -21,8 +22,12 @@ async function main() {
   }
 
   const passwordHash = await hashPassword(password)
+  const slug = await generateUniqueSlug(email.split("@")[0], async (candidate) => {
+    const existing = await prisma.user.findUnique({ where: { slug: candidate }, select: { id: true } })
+    return existing !== null
+  })
   await prisma.user.create({
-    data: { email, passwordHash, name: "Admin" },
+    data: { email, passwordHash, name: "Admin", slug },
   })
   console.log(`Seeded initial admin user: ${email}`)
 }

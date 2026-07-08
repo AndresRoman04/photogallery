@@ -4,6 +4,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     photo: { findMany: vi.fn(), count: vi.fn(), create: vi.fn(), delete: vi.fn() },
     customerSelection: { findMany: vi.fn(), count: vi.fn(), create: vi.fn() },
+    user: { findUnique: vi.fn(), findMany: vi.fn() },
   },
 }))
 vi.mock("@/lib/storage", () => ({
@@ -24,7 +25,8 @@ import { deleteFile } from "@/lib/storage"
 import { auth } from "@/lib/auth"
 import {
   uploadPhotoAction,
-  getPhotosAction,
+  getGalleryPhotosAction,
+  getPhotographersAction,
   getMyPhotosAction,
   getSelectionsAction,
   submitSelectionAction,
@@ -101,17 +103,60 @@ describe("uploadPhotoAction", () => {
   })
 })
 
-describe("getPhotosAction", () => {
-  it("returns photos and total on success", async () => {
+describe("getGalleryPhotosAction", () => {
+  it("returns only the slug owner's active photos", async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: "u1" } as any)
     vi.mocked(prisma.photo.findMany).mockResolvedValue([{ id: "1" }] as any)
     vi.mocked(prisma.photo.count).mockResolvedValue(1)
-    const result = await getPhotosAction()
+    const result = await getGalleryPhotosAction("jane-doe")
     expect(result).toMatchObject({ success: true, total: 1 })
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+      where: { slug: "jane-doe" },
+      select: { id: true },
+    })
+    expect(prisma.photo.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: "u1", isActive: true } })
+    )
+  })
+
+  it("returns a failure result for an unknown slug", async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
+    const result = await getGalleryPhotosAction("nobody")
+    expect(result.success).toBe(false)
+    expect(result.error).toMatch(/not found/i)
+    expect(prisma.photo.findMany).not.toHaveBeenCalled()
   })
 
   it("returns a failure result if the query throws", async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: "u1" } as any)
     vi.mocked(prisma.photo.findMany).mockRejectedValue(new Error("db down"))
-    const result = await getPhotosAction()
+    const result = await getGalleryPhotosAction("jane-doe")
+    expect(result.success).toBe(false)
+  })
+})
+
+describe("getPhotographersAction", () => {
+  it("maps photographers with cover image and photo count", async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      {
+        name: "Jane",
+        slug: "jane",
+        photos: [{ imageUrl: "http://x/cover.jpg" }],
+        _count: { photos: 4 },
+      },
+      { name: null, slug: "bob", photos: [], _count: { photos: 1 } },
+    ] as any)
+    const result = await getPhotographersAction()
+    expect(result.success).toBe(true)
+    expect(result.photographers).toEqual([
+      { name: "Jane", slug: "jane", photoCount: 4, coverImageUrl: "http://x/cover.jpg" },
+      { name: null, slug: "bob", photoCount: 1, coverImageUrl: null },
+    ])
+  })
+
+  it("returns a failure result if the query throws", async () => {
+    vi.mocked(prisma.user.findMany).mockRejectedValue(new Error("db down"))
+    const result = await getPhotographersAction()
     expect(result.success).toBe(false)
   })
 })
@@ -156,6 +201,25 @@ describe("getSelectionsAction", () => {
     expect(result.selections?.[0].photos).toEqual([{ id: "p1", title: "Paris" }])
   })
 
+  it("scopes selections to the logged-in photographer's photos", async () => {
+    vi.mocked(prisma.customerSelection.findMany).mockResolvedValue([] as any)
+    vi.mocked(prisma.customerSelection.count).mockResolvedValue(0)
+    await getSelectionsAction()
+    const ownershipWhere = { photos: { some: { photo: { userId: "admin-1" } } } }
+    expect(prisma.customerSelection.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: ownershipWhere })
+    )
+    expect(prisma.customerSelection.count).toHaveBeenCalledWith({ where: ownershipWhere })
+  })
+
+  it("rejects a caller without an admin session", async () => {
+    vi.mocked(auth).mockResolvedValue(null as any)
+    const result = await getSelectionsAction()
+    expect(result.success).toBe(false)
+    expect(result.error).toMatch(/Not authorized/)
+    expect(prisma.customerSelection.findMany).not.toHaveBeenCalled()
+  })
+
   it("returns a failure result if the query throws", async () => {
     vi.mocked(prisma.customerSelection.findMany).mockRejectedValue(new Error("db down"))
     const result = await getSelectionsAction()
@@ -164,9 +228,15 @@ describe("getSelectionsAction", () => {
 })
 
 describe("submitSelectionAction", () => {
+  // What the pre-create validation query returns: real, active, single-owner.
+  const validPhotos = [
+    { id: "p1", isActive: true, userId: "u1" },
+    { id: "p2", isActive: true, userId: "u1" },
+  ]
+
   it("creates a selection via the relation", async () => {
     vi.mocked(prisma.customerSelection.create).mockResolvedValue({ id: "s1" } as any)
-    vi.mocked(prisma.photo.findMany).mockResolvedValue([])
+    vi.mocked(prisma.photo.findMany).mockResolvedValue(validPhotos as any)
 
     const result = await submitSelectionAction({
       customerEmail: "a@b.com",
@@ -184,9 +254,48 @@ describe("submitSelectionAction", () => {
     })
   })
 
+  it("rejects an empty selection", async () => {
+    const result = await submitSelectionAction({ customerEmail: "a@b.com", selectedPhotos: [] })
+    expect(result.success).toBe(false)
+    expect(prisma.customerSelection.create).not.toHaveBeenCalled()
+  })
+
+  it("rejects photos from two different photographers", async () => {
+    vi.mocked(prisma.photo.findMany).mockResolvedValue([
+      { id: "p1", isActive: true, userId: "u1" },
+      { id: "p2", isActive: true, userId: "u2" },
+    ] as any)
+
+    const result = await submitSelectionAction({ customerEmail: "a@b.com", selectedPhotos: ["p1", "p2"] })
+    expect(result.success).toBe(false)
+    expect(result.error).toMatch(/same photographer/)
+    expect(prisma.customerSelection.create).not.toHaveBeenCalled()
+  })
+
+  it("rejects ids that don't resolve to existing photos", async () => {
+    vi.mocked(prisma.photo.findMany).mockResolvedValue([validPhotos[0]] as any)
+    const result = await submitSelectionAction({ customerEmail: "a@b.com", selectedPhotos: ["p1", "ghost"] })
+    expect(result.success).toBe(false)
+    expect(result.error).toMatch(/unavailable/)
+    expect(prisma.customerSelection.create).not.toHaveBeenCalled()
+  })
+
+  it("rejects inactive photos", async () => {
+    vi.mocked(prisma.photo.findMany).mockResolvedValue([
+      { id: "p1", isActive: false, userId: "u1" },
+    ] as any)
+    const result = await submitSelectionAction({ customerEmail: "a@b.com", selectedPhotos: ["p1"] })
+    expect(result.success).toBe(false)
+    expect(result.error).toMatch(/unavailable/)
+    expect(prisma.customerSelection.create).not.toHaveBeenCalled()
+  })
+
   it("still succeeds if the notification email fails", async () => {
     vi.mocked(prisma.customerSelection.create).mockResolvedValue({ id: "s1" } as any)
-    vi.mocked(prisma.photo.findMany).mockRejectedValue(new Error("email lookup failed"))
+    // First findMany validates the selection; second one (email body lookup) fails.
+    vi.mocked(prisma.photo.findMany)
+      .mockResolvedValueOnce([validPhotos[0]] as any)
+      .mockRejectedValueOnce(new Error("email lookup failed"))
 
     const result = await submitSelectionAction({ customerEmail: "a@b.com", selectedPhotos: ["p1"] })
     expect(result.success).toBe(true)
