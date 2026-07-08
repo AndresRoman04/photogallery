@@ -84,6 +84,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // `token.role` is set by the jwt() callback above; the underlying JWT
         // type augmentation isn't picked up at this call site, so narrow it here.
         session.user.role = token.role as "admin" | "customer" | undefined
+        // token.sub carries the DB UUID returned by the authorize() callbacks
+        // (User.id for admins, CustomerAccount.id for customers).
+        if (token.sub) {
+          session.user.id = token.sub
+        }
       }
       return session
     },

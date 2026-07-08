@@ -15,19 +15,29 @@ vi.mock("resend", () => ({
   Resend: vi.fn().mockImplementation(() => ({ emails: { send: vi.fn() } })),
 }))
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
+vi.mock("@/lib/auth", () => ({
+  auth: vi.fn(),
+}))
 
 import { prisma } from "@/lib/prisma"
 import { deleteFile } from "@/lib/storage"
+import { auth } from "@/lib/auth"
 import {
   uploadPhotoAction,
   getPhotosAction,
+  getMyPhotosAction,
   getSelectionsAction,
   submitSelectionAction,
   deletePhotoAction,
 } from "./photos"
 
+const ADMIN_SESSION = { user: { id: "admin-1", role: "admin" } }
+
 beforeEach(() => {
   vi.clearAllMocks()
+  // Owner-scoped actions require an admin session; individual tests override
+  // this to exercise the unauthorized paths.
+  vi.mocked(auth).mockResolvedValue(ADMIN_SESSION as any)
 })
 
 describe("uploadPhotoAction", () => {
@@ -67,6 +77,28 @@ describe("uploadPhotoAction", () => {
     const result = await uploadPhotoAction(formData)
     expect(result.success).toBe(true)
   })
+
+  it("stamps the new photo with the session user's id", async () => {
+    vi.mocked(prisma.photo.create).mockResolvedValue({ id: "1", title: "test" } as any)
+    const formData = new FormData()
+    formData.append("file", new File(["x"], "photo.jpg", { type: "image/jpeg" }))
+    formData.append("title", "test")
+    await uploadPhotoAction(formData)
+    expect(prisma.photo.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ userId: "admin-1" }),
+    })
+  })
+
+  it("rejects a caller without an admin session", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "cust-1", role: "customer" } } as any)
+    const formData = new FormData()
+    formData.append("file", new File(["x"], "photo.jpg", { type: "image/jpeg" }))
+    formData.append("title", "test")
+    const result = await uploadPhotoAction(formData)
+    expect(result.success).toBe(false)
+    expect(result.error).toMatch(/Not authorized/)
+    expect(prisma.photo.create).not.toHaveBeenCalled()
+  })
 })
 
 describe("getPhotosAction", () => {
@@ -81,6 +113,27 @@ describe("getPhotosAction", () => {
     vi.mocked(prisma.photo.findMany).mockRejectedValue(new Error("db down"))
     const result = await getPhotosAction()
     expect(result.success).toBe(false)
+  })
+})
+
+describe("getMyPhotosAction", () => {
+  it("only queries photos owned by the session user", async () => {
+    vi.mocked(prisma.photo.findMany).mockResolvedValue([{ id: "1" }] as any)
+    vi.mocked(prisma.photo.count).mockResolvedValue(1)
+    const result = await getMyPhotosAction()
+    expect(result).toMatchObject({ success: true, total: 1 })
+    expect(prisma.photo.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: "admin-1" } })
+    )
+    expect(prisma.photo.count).toHaveBeenCalledWith({ where: { userId: "admin-1" } })
+  })
+
+  it("rejects a caller without an admin session", async () => {
+    vi.mocked(auth).mockResolvedValue(null as any)
+    const result = await getMyPhotosAction()
+    expect(result.success).toBe(false)
+    expect(result.error).toMatch(/Not authorized/)
+    expect(prisma.photo.findMany).not.toHaveBeenCalled()
   })
 })
 
@@ -146,6 +199,32 @@ describe("deletePhotoAction", () => {
     const result = await deletePhotoAction("1")
     expect(result.success).toBe(true)
     expect(deleteFile).toHaveBeenCalledWith("x.jpg")
+  })
+
+  it("scopes the delete to photos owned by the session user", async () => {
+    vi.mocked(prisma.photo.delete).mockResolvedValue({ id: "1", storagePath: "x.jpg" } as any)
+    await deletePhotoAction("1")
+    expect(prisma.photo.delete).toHaveBeenCalledWith({
+      where: { id: "1", userId: "admin-1" },
+    })
+  })
+
+  it("rejects deleting another user's photo as not found", async () => {
+    // Prisma throws P2025 when the ownership-scoped where matches nothing —
+    // same result whether the photo belongs to someone else or doesn't exist.
+    vi.mocked(prisma.photo.delete).mockRejectedValue({ code: "P2025" })
+    const result = await deletePhotoAction("someone-elses-photo")
+    expect(result.success).toBe(false)
+    expect(result.error).toMatch(/not found/i)
+    expect(deleteFile).not.toHaveBeenCalled()
+  })
+
+  it("rejects a caller without an admin session", async () => {
+    vi.mocked(auth).mockResolvedValue(null as any)
+    const result = await deletePhotoAction("1")
+    expect(result.success).toBe(false)
+    expect(result.error).toMatch(/Not authorized/)
+    expect(prisma.photo.delete).not.toHaveBeenCalled()
   })
 
   it("still succeeds if storage cleanup fails", async () => {

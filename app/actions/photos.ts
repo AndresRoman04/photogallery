@@ -1,10 +1,23 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
 import { uploadFile, getPublicUrl, deleteFile } from "@/lib/storage"
 import { revalidatePath } from "next/cache"
 import { Resend } from "resend"
 
+// Server Actions are invocable endpoints in their own right — proxy.ts only
+// gates /admin page routes, and this module is also imported by the public
+// gallery — so owner-scoped actions must check the session themselves.
+// Returns the admin's User id, or null when the caller isn't an admin.
+async function getSessionAdminId() {
+  const session = await auth()
+  if (session?.user?.role !== "admin" || !session.user.id) return null
+  return session.user.id
+}
+
+// Public gallery on `/`: intentionally unscoped — all photographers' active
+// photos mixed together (per-photographer public galleries are BFT-28).
 export async function getPhotosAction(page = 1, pageSize = 12) {
   try {
     const skip = (page - 1) * pageSize
@@ -16,6 +29,31 @@ export async function getPhotosAction(page = 1, pageSize = 12) {
         take: pageSize,
       }),
       prisma.photo.count({ where: { isActive: true } }),
+    ])
+    return { success: true, photos, total, page, pageSize }
+  } catch (error) {
+    console.error("Failed to fetch photos:", error)
+    return { success: false, error: "Failed to fetch photos" }
+  }
+}
+
+// Admin "Manage Photos" view: only the logged-in photographer's own photos.
+export async function getMyPhotosAction(page = 1, pageSize = 12) {
+  try {
+    const userId = await getSessionAdminId()
+    if (!userId) {
+      return { success: false, error: "Not authorized" }
+    }
+
+    const skip = (page - 1) * pageSize
+    const [photos, total] = await Promise.all([
+      prisma.photo.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: pageSize,
+      }),
+      prisma.photo.count({ where: { userId } }),
     ])
     return { success: true, photos, total, page, pageSize }
   } catch (error) {
@@ -117,6 +155,11 @@ const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024 // 8MB, under the 10mb Server Action
 
 export async function uploadPhotoAction(formData: FormData) {
   try {
+    const userId = await getSessionAdminId()
+    if (!userId) {
+      return { success: false, error: "Not authorized" }
+    }
+
     const file = formData.get("file") as File
     const title = formData.get("title") as string
     const description = formData.get("description") as string
@@ -155,6 +198,7 @@ export async function uploadPhotoAction(formData: FormData) {
         imageUrl: publicUrl,
         storagePath: fileName,
         isActive: true,
+        userId,
       },
     })
 
@@ -170,7 +214,15 @@ export async function uploadPhotoAction(formData: FormData) {
 
 export async function deletePhotoAction(photoId: string) {
   try {
-    const photo = await prisma.photo.delete({ where: { id: photoId } })
+    const userId = await getSessionAdminId()
+    if (!userId) {
+      return { success: false, error: "Not authorized" }
+    }
+
+    // The userId filter makes ownership part of the delete itself: a photo
+    // owned by someone else throws P2025 exactly like a nonexistent id, so
+    // non-owners can't even learn whether the photo exists.
+    const photo = await prisma.photo.delete({ where: { id: photoId, userId } })
 
     // Cascade on selection_photos already removed it from any customer selections.
     // Best-effort cleanup of the underlying object; a missing storage object shouldn't
@@ -185,7 +237,10 @@ export async function deletePhotoAction(photoId: string) {
     revalidatePath("/")
 
     return { success: true }
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === "P2025") {
+      return { success: false, error: "Photo not found" }
+    }
     console.error("Failed to delete photo:", error)
     return { success: false, error: "Delete failed" }
   }

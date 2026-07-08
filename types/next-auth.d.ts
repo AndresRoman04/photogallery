@@ -1,8 +1,10 @@
 import type { DefaultSession } from "next-auth"
 
 // Adds `role` ("admin" | "customer") to the session/JWT so proxy.ts can gate
-// /admin without re-querying the DB on every request. Set in lib/auth.ts's
-// jwt/session callbacks based on which provider authenticated the user.
+// /admin without re-querying the DB on every request, and `id` (the DB UUID,
+// carried in token.sub) so Server Actions can scope queries to the logged-in
+// user. Set in lib/auth.ts's jwt/session callbacks based on which provider
+// authenticated the user.
 //
 // next-auth re-exports its Session/JWT types from @auth/core (`export * from
 // "@auth/core/..."`), and @auth/core's own types are what callback signatures
@@ -10,6 +12,7 @@ import type { DefaultSession } from "next-auth"
 declare module "next-auth" {
   interface Session {
     user: {
+      id?: string
       role?: "admin" | "customer"
     } & DefaultSession["user"]
   }
@@ -18,6 +21,7 @@ declare module "next-auth" {
 declare module "@auth/core/types" {
   interface Session {
     user: {
+      id?: string
       role?: "admin" | "customer"
     } & DefaultSession["user"]
   }

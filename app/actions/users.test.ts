@@ -102,39 +102,49 @@ describe("updateUserAction", () => {
 
 describe("deleteUserAction", () => {
   it("refuses to delete the currently logged-in user", async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { email: "self@example.com" } } as any)
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({ email: "self@example.com" } as any)
-    const result = await deleteUserAction("1")
+    vi.mocked(auth).mockResolvedValue({ user: { id: "u1" } } as any)
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: "u1" } as any)
+    const result = await deleteUserAction("u1")
     expect(result.success).toBe(false)
     expect(result.error).toMatch(/own account/)
     expect(prisma.user.delete).not.toHaveBeenCalled()
   })
 
   it("refuses to delete the last remaining user", async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { email: "other@example.com" } } as any)
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({ email: "target@example.com" } as any)
+    vi.mocked(auth).mockResolvedValue({ user: { id: "u2" } } as any)
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: "u1" } as any)
     vi.mocked(prisma.user.count).mockResolvedValue(1)
-    const result = await deleteUserAction("1")
+    const result = await deleteUserAction("u1")
     expect(result.success).toBe(false)
     expect(result.error).toMatch(/last remaining/)
     expect(prisma.user.delete).not.toHaveBeenCalled()
   })
 
   it("deletes the user when checks pass", async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { email: "other@example.com" } } as any)
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({ email: "target@example.com" } as any)
+    vi.mocked(auth).mockResolvedValue({ user: { id: "u2" } } as any)
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: "u1" } as any)
     vi.mocked(prisma.user.count).mockResolvedValue(2)
-    vi.mocked(prisma.user.delete).mockResolvedValue({ id: "1" } as any)
-    const result = await deleteUserAction("1")
+    vi.mocked(prisma.user.delete).mockResolvedValue({ id: "u1" } as any)
+    const result = await deleteUserAction("u1")
     expect(result.success).toBe(true)
-    expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: "1" } })
+    expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: "u1" } })
   })
 
   it("returns a failure result when the target user doesn't exist", async () => {
-    vi.mocked(auth).mockResolvedValue({ user: { email: "other@example.com" } } as any)
+    vi.mocked(auth).mockResolvedValue({ user: { id: "u2" } } as any)
     vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
     const result = await deleteUserAction("missing")
     expect(result.success).toBe(false)
     expect(prisma.user.delete).not.toHaveBeenCalled()
+  })
+
+  it("returns a friendly error when the user still owns photos", async () => {
+    vi.mocked(auth).mockResolvedValue({ user: { id: "u2" } } as any)
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: "u1" } as any)
+    vi.mocked(prisma.user.count).mockResolvedValue(2)
+    vi.mocked(prisma.user.delete).mockRejectedValue({ code: "P2003" })
+    const result = await deleteUserAction("u1")
+    expect(result.success).toBe(false)
+    expect(result.error).toMatch(/still owns photos/)
   })
 })
