@@ -6,14 +6,21 @@ vi.mock("./prisma", () => ({
 vi.mock("./password", () => ({
   verifyPassword: vi.fn(),
 }))
+vi.mock("./login-throttle", () => ({
+  isLockedOut: vi.fn().mockResolvedValue(false),
+  recordFailure: vi.fn(),
+  recordSuccess: vi.fn(),
+}))
 
 import { prisma } from "./prisma"
 import { verifyPassword } from "./password"
+import { isLockedOut, recordFailure, recordSuccess } from "./login-throttle"
 import { validateCustomerCredentials } from "./customer-credentials"
 
 describe("validateCustomerCredentials", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(isLockedOut).mockResolvedValue(false)
   })
 
   it("returns a customer when the email exists and the password matches", async () => {
@@ -32,6 +39,7 @@ describe("validateCustomerCredentials", () => {
     expect(prisma.customerAccount.findUnique).toHaveBeenCalledWith({ where: { email: "jane@example.com" } })
     expect(verifyPassword).toHaveBeenCalledWith("correct-password", "hashed")
     expect(result).toEqual({ id: "1", name: "Jane", email: "jane@example.com" })
+    expect(recordSuccess).toHaveBeenCalledWith("jane@example.com", "customer")
   })
 
   it("returns null for an OAuth-only account with no password set", async () => {
@@ -62,6 +70,7 @@ describe("validateCustomerCredentials", () => {
 
     const result = await validateCustomerCredentials("jane@example.com", "wrong")
     expect(result).toBeNull()
+    expect(recordFailure).toHaveBeenCalledWith("jane@example.com", "customer")
   })
 
   it("returns null when no account matches the email", async () => {
@@ -69,6 +78,15 @@ describe("validateCustomerCredentials", () => {
 
     const result = await validateCustomerCredentials("nobody@example.com", "correct-password")
     expect(result).toBeNull()
+    expect(verifyPassword).not.toHaveBeenCalled()
+  })
+
+  it("returns null without checking the password when the account is locked out", async () => {
+    vi.mocked(isLockedOut).mockResolvedValue(true)
+
+    const result = await validateCustomerCredentials("jane@example.com", "correct-password")
+    expect(result).toBeNull()
+    expect(prisma.customerAccount.findUnique).not.toHaveBeenCalled()
     expect(verifyPassword).not.toHaveBeenCalled()
   })
 
