@@ -9,7 +9,7 @@ vi.mock("@/lib/prisma", () => ({
 }))
 vi.mock("@/lib/storage", () => ({
   uploadFile: vi.fn(),
-  getPublicUrl: vi.fn().mockResolvedValue("http://localhost:9000/photos/test.jpg"),
+  getImageUrl: vi.fn().mockReturnValue("http://storage:9000/photos/test.jpg"),
   deleteFile: vi.fn(),
 }))
 vi.mock("resend", () => ({
@@ -141,7 +141,7 @@ describe("getPhotographersAction", () => {
       {
         name: "Jane",
         slug: "jane",
-        photos: [{ imageUrl: "http://x/cover.jpg" }],
+        photos: [{ storagePath: "cover.jpg" }],
         _count: { photos: 4 },
       },
       { name: null, slug: "bob", photos: [], _count: { photos: 1 } },
@@ -149,7 +149,7 @@ describe("getPhotographersAction", () => {
     const result = await getPhotographersAction()
     expect(result.success).toBe(true)
     expect(result.photographers).toEqual([
-      { name: "Jane", slug: "jane", photoCount: 4, coverImageUrl: "http://x/cover.jpg" },
+      { name: "Jane", slug: "jane", photoCount: 4, coverImageUrl: "http://storage:9000/photos/test.jpg" },
       { name: null, slug: "bob", photoCount: 1, coverImageUrl: null },
     ])
   })
@@ -191,14 +191,16 @@ describe("getSelectionsAction", () => {
         customerName: "A",
         notes: null,
         createdAt: new Date(),
-        photos: [{ photo: { id: "p1", title: "Paris" } }],
+        photos: [{ photo: { id: "p1", title: "Paris", storagePath: "paris.jpg" } }],
       },
     ] as any)
     vi.mocked(prisma.customerSelection.count).mockResolvedValue(1)
 
     const result = await getSelectionsAction()
     expect(result.success).toBe(true)
-    expect(result.selections?.[0].photos).toEqual([{ id: "p1", title: "Paris" }])
+    expect(result.selections?.[0].photos).toEqual([
+      { id: "p1", title: "Paris", storagePath: "paris.jpg", imageUrl: "http://storage:9000/photos/test.jpg" },
+    ])
   })
 
   it("scopes selections to the logged-in photographer's photos", async () => {

@@ -13,6 +13,7 @@
     "db:seed": "prisma db seed"
   },
   "dependencies": {
+    "@auth/core": "0.41.2",
     "@aws-sdk/client-s3": "latest",
     "@aws-sdk/s3-request-presigner": "latest",
     "@hookform/resolvers": "^3.10.0",
@@ -61,7 +62,7 @@
     "next": "16.2.6",
     "next-auth": "beta",
     "next-themes": "latest",
-    "pg": "latest",
+    "pg": "8.21.0",
     "prisma": "7.8.0",
     "react": "^19.2.6",
     "react-day-picker": "9.8.0",
@@ -70,6 +71,7 @@
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.4",
     "resend": "^6.0.1",
+    "sharp": "^0.35.3",
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
