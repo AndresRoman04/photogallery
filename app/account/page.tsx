@@ -5,7 +5,7 @@ export default function AccountPage() {
   const facebookEnabled = !!(process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET)
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex flex-1 items-center justify-center bg-background px-4 py-12">
       <AccountAuth googleEnabled={googleEnabled} facebookEnabled={facebookEnabled} />
     </div>
   )

@@ -11,16 +11,19 @@ export default async function GalleryPage({ params }: { params: Promise<{ slug: 
   if (!photographer) notFound()
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center mb-10">
-          <h1 className="text-5xl font-light tracking-tight text-foreground mb-3">
+    <main className="flex-1 bg-background">
+      <section className="border-b bg-gradient-to-b from-muted/60 via-muted/20 to-background">
+        <div className="container mx-auto px-4 py-16 text-center md:py-24">
+          <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-4">Gallery</p>
+          <h1 className="text-4xl md:text-5xl font-light tracking-tight text-foreground mb-4">
             {photographer.name || "Photo Gallery"}
           </h1>
           <p className="text-sm uppercase tracking-widest text-muted-foreground">
             Browse &amp; select your favorites
           </p>
         </div>
+      </section>
+      <div className="container mx-auto px-4 py-8">
         <PhotoGallery slug={slug} />
       </div>
     </main>
