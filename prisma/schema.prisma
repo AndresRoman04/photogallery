@@ -14,6 +14,9 @@ model User {
   email        String   @unique
   passwordHash String   @map("password_hash")
   name         String?
+  // URL-safe public gallery identifier (/gallery/[slug]); generated at
+  // creation from the name/email (lib/slug.ts) and never changed after.
+  slug         String   @unique
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   photos       Photo[]

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { getPhotosAction, submitSelectionAction } from "@/app/actions/photos"
+import { getGalleryPhotosAction, submitSelectionAction } from "@/app/actions/photos"
 import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -30,7 +30,9 @@ interface Photo {
   createdAt: Date
 }
 
-export function PhotoGallery() {
+// Renders one photographer's public gallery, identified by their URL slug
+// (resolved to a photographer by app/gallery/[slug]/page.tsx).
+export function PhotoGallery({ slug }: { slug: string }) {
   const PAGE_SIZE = 12
   const [photos, setPhotos] = useState<Photo[]>([])
   const [currentPage, setCurrentPage] = useState(1)
@@ -47,12 +49,13 @@ export function PhotoGallery() {
 
   useEffect(() => {
     loadPhotos(1)
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug])
 
   const loadPhotos = async (page: number) => {
     try {
       setLoading(true)
-      const result = await getPhotosAction(page, PAGE_SIZE)
+      const result = await getGalleryPhotosAction(slug, page, PAGE_SIZE)
 
       if (result.success && result.photos) {
         setPhotos(result.photos)
