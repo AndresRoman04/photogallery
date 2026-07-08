@@ -85,14 +85,12 @@ export async function deleteUserAction(userId: string) {
   try {
     const [session, target] = await Promise.all([
       auth(),
-      prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
+      prisma.user.findUnique({ where: { id: userId }, select: { id: true } }),
     ])
     if (!target) {
       return { success: false, error: "User not found" }
     }
-    // session.user only carries the Auth.js-default fields (name/email/image),
-    // so identity is compared by email rather than the DB id.
-    if (session?.user?.email === target.email) {
+    if (session?.user?.id === target.id) {
       return { success: false, error: "You cannot delete your own account while logged in." }
     }
 
@@ -105,7 +103,15 @@ export async function deleteUserAction(userId: string) {
 
     revalidatePath("/admin/users")
     return { success: true }
-  } catch (error) {
+  } catch (error: any) {
+    // Photo.user is onDelete: Restrict — a cascade would silently destroy the
+    // user's photos and orphan their storage objects.
+    if (error?.code === "P2003") {
+      return {
+        success: false,
+        error: "This user still owns photos. Delete their photos first, then remove the account.",
+      }
+    }
     console.error("Failed to delete user:", error)
     return { success: false, error: "Failed to delete user" }
   }

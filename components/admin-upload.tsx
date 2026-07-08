@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { uploadPhotoAction, getPhotosAction, deletePhotoAction } from "@/app/actions/photos"
+import { uploadPhotoAction, getMyPhotosAction, deletePhotoAction } from "@/app/actions/photos"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -46,7 +46,7 @@ export function AdminUpload() {
 
   const loadExistingPhotos = async () => {
     setLoadingExisting(true)
-    const result = await getPhotosAction(1, 100)
+    const result = await getMyPhotosAction(1, 100)
     if (result.success && result.photos) {
       setExistingPhotos(result.photos)
     } else {

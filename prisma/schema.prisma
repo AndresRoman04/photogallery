@@ -16,6 +16,8 @@ model User {
   name         String?
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
+  photos       Photo[]
+
   @@map("users")
 }
 
@@ -43,9 +45,17 @@ model Photo {
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
+  // Restrict (not Cascade): deleting a user must not silently destroy their
+  // photos — a cascade would also bypass deletePhotoAction's storage cleanup
+  // and leave orphaned MinIO objects. deleteUserAction surfaces this as a
+  // friendly error instead.
+  userId       String   @map("user_id") @db.Uuid
+  user         User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
   selections   SelectionPhoto[]
 
   @@index([isActive, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
   @@map("photos")
 }
 
