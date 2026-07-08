@@ -173,6 +173,7 @@ export function AdminUpload() {
                               src={previews[file.name]}
                               alt={file.name}
                               fill
+                              unoptimized
                               className="object-cover"
                             />
                           </div>

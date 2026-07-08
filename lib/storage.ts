@@ -25,10 +25,13 @@ export async function uploadFile(fileName: string, file: Buffer | Blob, contentT
   return fileName
 }
 
-export async function getPublicUrl(fileName: string) {
-  // Use a separate public endpoint if provided (e.g. localhost:9000 for browser)
-  const publicEndpoint = process.env.NEXT_PUBLIC_STORAGE_ENDPOINT || process.env.STORAGE_ENDPOINT
-  return `${publicEndpoint}/${BUCKET_NAME}/${fileName}`
+// Builds the image URL from the internal storage endpoint (e.g. http://storage:9000
+// in Docker). Called at read time rather than persisted, so a changed endpoint
+// (DHCP IP, docker network) never invalidates already-uploaded photos. The Next.js
+// image optimizer fetches this server-side and serves the result to the browser,
+// so the browser itself never needs a direct route to MinIO.
+export function getImageUrl(storagePath: string) {
+  return `${process.env.STORAGE_ENDPOINT}/${BUCKET_NAME}/${storagePath}`
 }
 
 export async function deleteFile(fileName: string) {

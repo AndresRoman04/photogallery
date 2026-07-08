@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
-import { uploadFile, getPublicUrl, deleteFile } from "@/lib/storage"
+import { uploadFile, getImageUrl, deleteFile } from "@/lib/storage"
 import { revalidatePath } from "next/cache"
 import { Resend } from "resend"
 
@@ -36,7 +36,13 @@ export async function getGalleryPhotosAction(slug: string, page = 1, pageSize = 
       }),
       prisma.photo.count({ where }),
     ])
-    return { success: true, photos, total, page, pageSize }
+    return {
+      success: true,
+      photos: photos.map((p) => ({ ...p, imageUrl: getImageUrl(p.storagePath) })),
+      total,
+      page,
+      pageSize,
+    }
   } catch (error) {
     console.error("Failed to fetch photos:", error)
     return { success: false, error: "Failed to fetch photos" }
@@ -57,7 +63,7 @@ export async function getPhotographersAction() {
           where: { isActive: true },
           orderBy: { createdAt: "desc" },
           take: 1,
-          select: { imageUrl: true },
+          select: { storagePath: true },
         },
         _count: { select: { photos: { where: { isActive: true } } } },
       },
@@ -67,7 +73,7 @@ export async function getPhotographersAction() {
       name: u.name,
       slug: u.slug,
       photoCount: u._count.photos,
-      coverImageUrl: u.photos[0]?.imageUrl ?? null,
+      coverImageUrl: u.photos[0] ? getImageUrl(u.photos[0].storagePath) : null,
     }))
     return { success: true, photographers }
   } catch (error) {
@@ -94,7 +100,13 @@ export async function getMyPhotosAction(page = 1, pageSize = 12) {
       }),
       prisma.photo.count({ where: { userId } }),
     ])
-    return { success: true, photos, total, page, pageSize }
+    return {
+      success: true,
+      photos: photos.map((p) => ({ ...p, imageUrl: getImageUrl(p.storagePath) })),
+      total,
+      page,
+      pageSize,
+    }
   } catch (error) {
     console.error("Failed to fetch photos:", error)
     return { success: false, error: "Failed to fetch photos" }
@@ -130,7 +142,7 @@ export async function getSelectionsAction(page = 1, pageSize = 10) {
       customerName: s.customerName,
       notes: s.notes,
       createdAt: s.createdAt,
-      photos: s.photos.map((sp) => sp.photo),
+      photos: s.photos.map((sp) => ({ ...sp.photo, imageUrl: getImageUrl(sp.photo.storagePath) })),
     }))
 
     return { success: true, selections: groupedSelections, total, page, pageSize }
@@ -255,15 +267,14 @@ export async function uploadPhotoAction(formData: FormData) {
     // rather than trusting the client-declared file.type all the way to storage.
     await uploadFile(fileName, file, expectedContentType)
 
-    // 2. Get Public URL
-    const publicUrl = await getPublicUrl(fileName)
-
-    // 3. Save to Database via Prisma
+    // 2. Save to Database via Prisma. imageUrl is kept only because the column
+    // is still non-nullable; every read path derives the display URL fresh
+    // from storagePath via getImageUrl instead of trusting this stored value.
     const photo = await prisma.photo.create({
       data: {
         title: title || file.name,
         description: description || "",
-        imageUrl: publicUrl,
+        imageUrl: getImageUrl(fileName),
         storagePath: fileName,
         isActive: true,
         userId,
@@ -273,7 +284,7 @@ export async function uploadPhotoAction(formData: FormData) {
     revalidatePath("/admin")
     revalidatePath("/")
 
-    return { success: true, photo }
+    return { success: true, photo: { ...photo, imageUrl: getImageUrl(photo.storagePath) } }
   } catch (error) {
     console.error("Failed to upload photo:", error)
     return { success: false, error: "Upload failed" }
