@@ -26,12 +26,17 @@ RUN pnpm exec prisma generate
 # Build the Next.js app
 RUN pnpm run build
 
-# 3. Production runner stage
+# 3. Production runner stage — serves the standalone build and nothing else.
+# CRITICAL: never run pnpm inside /app here. The standalone node_modules is a
+# trace whose .next/node_modules/@prisma/client-<hash> symlink points into the
+# builder's pnpm virtual store; a fresh install rebuilds the store under
+# different hashes and leaves that symlink dangling (500s on every request).
+# Prisma CLI work (db push / seed) lives in the compose `migrate` service,
+# which reuses the builder stage instead.
 FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-RUN corepack enable && corepack prepare pnpm@11.5.1 --activate
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -40,15 +45,6 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-# Copy Prisma files needed for runtime migrations
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
-COPY --from=builder /app/.npmrc* ./
-
-# CRITICAL: Install Prisma and Dotenv in the final stage so migrations work
-RUN pnpm add prisma@7.8.0 dotenv@latest @prisma/client@7.8.0
 
 USER nextjs
 

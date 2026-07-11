@@ -62,13 +62,14 @@ until docker compose exec -T db pg_isready -U "${POSTGRES_USER:-user}" -d photog
   sleep 1
 done
 
-# 4. Push Prisma schema to the database
+# 4. Push Prisma schema to the database (one-shot tooling container — the
+# app image is a pure standalone build with no Prisma CLI in it)
 echo "🔄 Syncing database schema with Prisma..."
-docker compose exec -T app npx prisma db push
+docker compose run --rm migrate
 
 # 5. Seed the initial admin user (only runs if the users table is empty)
 echo "👤 Seeding initial admin user..."
-docker compose exec -T app npx prisma db seed
+docker compose run --rm migrate pnpm exec prisma db seed
 
 echo "✅ Initialization complete!"
 echo "🌐 App is running at: http://localhost:3000"

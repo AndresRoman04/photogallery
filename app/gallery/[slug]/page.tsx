@@ -2,6 +2,10 @@ import { notFound } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { PhotoGallery } from "@/components/photo-gallery"
 
+// Resolves the slug against the DB per request; no generateStaticParams, so
+// this documents (and guarantees) request-time rendering at build.
+export const dynamic = "force-dynamic"
+
 export default async function GalleryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const photographer = await prisma.user.findUnique({

@@ -21,6 +21,24 @@ services:
       - db
       - storage
 
+  # One-shot Prisma CLI tooling (schema push / seed), run on demand via
+  # `docker compose run --rm migrate [command]`. Reuses the builder stage —
+  # which has the full node_modules, schema, and generated client — instead of
+  # polluting the runtime image with pnpm/prisma (see Dockerfile runner note).
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    profiles: ["tools"]
+    command: pnpm exec prisma db push
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/photogallery
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    depends_on:
+      - db
+
   db:
     image: postgres:16-alpine
     environment:
