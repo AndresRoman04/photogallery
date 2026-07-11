@@ -89,6 +89,10 @@ Prisma CLI commands run in a one-shot tooling container (the app image is a pure
   ```bash
   docker compose run --rm migrate pnpm exec prisma <command>
   ```
+* **Provision the storage bucket** (creates the `photos` bucket and its anonymous-download policy; idempotent — `init.sh` runs this automatically):
+  ```bash
+  docker compose run --rm storage-init
+  ```
 
 ## 🛡️ Dependency Audit Baseline
 

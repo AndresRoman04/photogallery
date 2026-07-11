@@ -56,18 +56,23 @@ fi
 echo "📦 Starting Docker containers..."
 docker compose up -d --build
 
-# 3. Wait for database to be ready
+# 3. Provision the storage bucket (idempotent: creates the photos bucket if
+# missing and applies the anonymous-download policy photos need to display)
+echo "🪣 Provisioning storage bucket..."
+docker compose run --rm storage-init
+
+# 4. Wait for database to be ready
 echo "⏳ Waiting for PostgreSQL database to be ready..."
 until docker compose exec -T db pg_isready -U "${POSTGRES_USER:-user}" -d photogallery >/dev/null 2>&1; do
   sleep 1
 done
 
-# 4. Push Prisma schema to the database (one-shot tooling container — the
+# 5. Push Prisma schema to the database (one-shot tooling container — the
 # app image is a pure standalone build with no Prisma CLI in it)
 echo "🔄 Syncing database schema with Prisma..."
 docker compose run --rm migrate
 
-# 5. Seed the initial admin user (only runs if the users table is empty)
+# 6. Seed the initial admin user (only runs if the users table is empty)
 echo "👤 Seeding initial admin user..."
 docker compose run --rm migrate pnpm exec prisma db seed
 
