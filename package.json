@@ -17,7 +17,6 @@
     "@aws-sdk/client-s3": "latest",
     "@aws-sdk/s3-request-presigner": "latest",
     "@hookform/resolvers": "^3.10.0",
-    "@orengrinker/jira-mcp-server": "^1.0.3",
     "@prisma/adapter-pg": "latest",
     "@prisma/client": "latest",
     "@radix-ui/react-accordion": "1.2.2",
@@ -79,6 +78,7 @@
     "zod": "3.25.67"
   },
   "devDependencies": {
+    "@orengrinker/jira-mcp-server": "^1.0.3",
     "@tailwindcss/postcss": "^4.1.9",
     "@types/node": "^22",
     "@types/react": "^19",
