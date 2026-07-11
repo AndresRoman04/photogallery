@@ -75,15 +75,19 @@ The admin dashboard is protected and located at `/admin`. To access it:
 
 ## 🛠️ Development & Database Commands
 
-If you need to execute Prisma CLI commands inside the running container context, prefix them with `docker compose exec`:
+Prisma CLI commands run in a one-shot tooling container (the app image is a pure standalone build with no Prisma CLI inside):
 
 * **Push schema updates to database:**
   ```bash
-  docker compose exec app npx prisma db push
+  docker compose run --rm migrate
   ```
-* **Generate Prisma Client:**
+* **Seed the initial admin user:**
   ```bash
-  docker compose exec app npx prisma generate
+  docker compose run --rm migrate pnpm exec prisma db seed
+  ```
+* **Any other Prisma command:**
+  ```bash
+  docker compose run --rm migrate pnpm exec prisma <command>
   ```
 
 ## 🛡️ Dependency Audit Baseline

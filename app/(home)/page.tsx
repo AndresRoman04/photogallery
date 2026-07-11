@@ -3,6 +3,11 @@ import Image from "next/image"
 import { getPhotographersAction } from "@/app/actions/photos"
 import { Card, CardContent } from "@/components/ui/card"
 
+// Queries the DB per request — never statically prerender (a build-time
+// snapshot both requires DATABASE_URL during `next build`, which Docker
+// doesn't provide, and would freeze the photographer directory).
+export const dynamic = "force-dynamic"
+
 export default async function Home() {
   const result = await getPhotographersAction()
   const photographers = result.success ? (result.photographers ?? []) : []
