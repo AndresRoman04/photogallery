@@ -86,6 +86,23 @@ If you need to execute Prisma CLI commands inside the running container context,
   docker compose exec app npx prisma generate
   ```
 
+## 🛡️ Dependency Audit Baseline
+
+As of 2026-07-10 (BFT-33/BFT-34), `pnpm audit --prod` is **clean** — zero known
+vulnerabilities in the production dependency tree. Anything a future
+`pnpm audit --prod` reports is a genuine regression.
+
+The full audit (`pnpm audit`, dev tree included) carries two accepted
+advisories in `@modelcontextprotocol/sdk@0.5.0`, pulled in by
+`@orengrinker/jira-mcp-server` — a local development tool (Claude Code Jira
+integration) that never ships to production. Every published version of that
+package pins the same vulnerable SDK, so there is no upgrade path short of
+replacing the tool; the risk is accepted because the server only runs locally
+over stdio during development.
+
+Transitive pins live in `pnpm-workspace.yaml` `overrides` (`hono`, `postcss`) —
+check there first when an advisory points at a package no app code imports.
+
 ## 📄 License
 
 Created for ByteForge. All rights reserved.

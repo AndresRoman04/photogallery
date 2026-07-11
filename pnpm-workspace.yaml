@@ -14,5 +14,9 @@ allowBuilds:
 minimumReleaseAge: 1440
 
 overrides:
-  "hono": ">=4.12.21"
+  # Neither hono nor postcss is imported by app code — these pin transitive
+  # copies inside prisma's dev CLI and next respectively past their advisories
+  # (hono <4.12.25: CORS reflection + 4 more; postcss <8.5.10: XSS in stringify).
+  "hono": ">=4.12.25"
   "@hono/node-server": ">=1.19.13"
+  "postcss": ">=8.5.10"
