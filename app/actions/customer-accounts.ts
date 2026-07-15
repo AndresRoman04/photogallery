@@ -24,8 +24,8 @@ export async function registerCustomerAction(data: { email: string; password: st
     })
 
     return { success: true, email }
-  } catch (error: any) {
-    if (error?.code === "P2002") {
+  } catch (error) {
+    if ((error as { code?: string })?.code === "P2002") {
       return { success: false, error: "An account with that email already exists." }
     }
     console.error("Failed to register customer account:", error)

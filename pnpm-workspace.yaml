@@ -8,6 +8,8 @@ allowBuilds:
   esbuild: false
   "prisma": true
   "sharp": true
+  # eslint-config-next transitive; ships prebuilt binaries, build is a fallback
+  "unrs-resolver": false
 
 # Enforce a 24-hour window (1440 minutes) on all downloaded packages
 # This prevents downloading malicious packages immediately after publication

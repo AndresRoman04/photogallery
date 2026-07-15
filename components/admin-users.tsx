@@ -57,10 +57,6 @@ export function AdminUsers() {
   const [name, setName] = useState("")
   const [password, setPassword] = useState("")
 
-  useEffect(() => {
-    loadUsers()
-  }, [])
-
   const loadUsers = async () => {
     setLoading(true)
     const result = await getUsersAction()
@@ -71,6 +67,10 @@ export function AdminUsers() {
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    loadUsers()
+  }, [])
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -280,9 +280,9 @@ export function AdminUsers() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Delete "{user.email}"?</AlertDialogTitle>
+                          <AlertDialogTitle>Delete &quot;{user.email}&quot;?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will permanently remove this user's account and revoke their access. This
+                            This will permanently remove this user&apos;s account and revoke their access. This
                             action cannot be undone.
                           </AlertDialogDescription>
                         </AlertDialogHeader>

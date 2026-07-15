@@ -49,11 +49,12 @@ export async function createUserAction(data: { email: string; password: string; 
 
     revalidatePath("/admin/users")
     return { success: true, user }
-  } catch (error: any) {
-    if (error?.code === "P2002") {
+  } catch (error) {
+    const prismaError = error as { code?: string; meta?: { target?: unknown } }
+    if (prismaError?.code === "P2002") {
       // Unique violation on email, or on slug if a concurrent create raced
       // past the uniqueness probe above.
-      const target = String(error?.meta?.target ?? "")
+      const target = String(prismaError?.meta?.target ?? "")
       if (target.includes("slug")) {
         return { success: false, error: "Could not reserve a gallery URL for this name. Try again." }
       }
@@ -117,10 +118,10 @@ export async function deleteUserAction(userId: string) {
 
     revalidatePath("/admin/users")
     return { success: true }
-  } catch (error: any) {
+  } catch (error) {
     // Photo.user is onDelete: Restrict — a cascade would silently destroy the
     // user's photos and orphan their storage objects.
-    if (error?.code === "P2003") {
+    if ((error as { code?: string })?.code === "P2003") {
       return {
         success: false,
         error: "This user still owns photos. Delete their photos first, then remove the account.",

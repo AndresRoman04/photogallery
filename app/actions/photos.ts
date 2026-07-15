@@ -316,8 +316,8 @@ export async function deletePhotoAction(photoId: string) {
     revalidatePath("/")
 
     return { success: true }
-  } catch (error: any) {
-    if (error?.code === "P2025") {
+  } catch (error) {
+    if ((error as { code?: string })?.code === "P2025") {
       return { success: false, error: "Photo not found" }
     }
     console.error("Failed to delete photo:", error)

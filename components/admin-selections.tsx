@@ -37,10 +37,6 @@ export function AdminSelections() {
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadSelections(1)
-  }, [])
-
   const loadSelections = async (page: number) => {
     setLoading(true)
     const result = await getSelectionsAction(page, PAGE_SIZE)
@@ -54,6 +50,10 @@ export function AdminSelections() {
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    loadSelections(1)
+  }, [])
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString("en-US", {
