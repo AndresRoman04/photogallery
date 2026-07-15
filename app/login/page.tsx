@@ -44,9 +44,9 @@ function LoginForm() {
 
       router.push(redirectedFrom)
       router.refresh()
-    } catch (error: any) {
+    } catch (error) {
       toast.error("An unexpected error occurred", {
-        description: error.message,
+        description: error instanceof Error ? error.message : String(error),
       })
     } finally {
       setIsLoading(false)

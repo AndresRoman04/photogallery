@@ -40,10 +40,6 @@ export function AdminUpload() {
   const [loadingExisting, setLoadingExisting] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadExistingPhotos()
-  }, [])
-
   const loadExistingPhotos = async () => {
     setLoadingExisting(true)
     const result = await getMyPhotosAction(1, 100)
@@ -54,6 +50,10 @@ export function AdminUpload() {
     }
     setLoadingExisting(false)
   }
+
+  useEffect(() => {
+    loadExistingPhotos()
+  }, [])
 
   const handleDeletePhoto = async (photoId: string) => {
     setDeletingId(photoId)
@@ -287,7 +287,7 @@ export function AdminUpload() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Delete "{photo.title}"?</AlertDialogTitle>
+                          <AlertDialogTitle>Delete &quot;{photo.title}&quot;?</AlertDialogTitle>
                           <AlertDialogDescription>
                             This will permanently remove the photo and its file from storage. This action cannot be undone.
                           </AlertDialogDescription>

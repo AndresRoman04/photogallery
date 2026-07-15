@@ -47,11 +47,6 @@ export function PhotoGallery({ slug }: { slug: string }) {
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
-  useEffect(() => {
-    loadPhotos(1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug])
-
   const loadPhotos = async (page: number) => {
     try {
       setLoading(true)
@@ -73,6 +68,11 @@ export function PhotoGallery({ slug }: { slug: string }) {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    loadPhotos(1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug])
 
   const togglePhotoSelection = (photoId: string) => {
     setSelectedPhotos((prev) => {
@@ -166,7 +166,7 @@ export function PhotoGallery({ slug }: { slug: string }) {
         <CheckCircle className="h-16 w-16 text-primary mx-auto mb-4 animate-bounce" />
         <h2 className="text-3xl font-light tracking-tight mb-2">Thank You!</h2>
         <p className="text-muted-foreground text-lg">
-          Your photo selections have been submitted successfully. We'll be in touch soon!
+          Your photo selections have been submitted successfully. We&apos;ll be in touch soon!
         </p>
       </Card>
     )
@@ -203,7 +203,7 @@ export function PhotoGallery({ slug }: { slug: string }) {
           <CardContent className="px-0 pb-0">
             <div className="space-y-4">
               <div className="text-sm text-muted-foreground mb-4 p-3 bg-muted rounded-lg border border-border">
-                You've selected {selectedPhotos.size} photo{selectedPhotos.size > 1 ? "s" : ""}. Please provide your
+                You&apos;ve selected {selectedPhotos.size} photo{selectedPhotos.size > 1 ? "s" : ""}. Please provide your
                 contact information so we can get in touch with you.
               </div>
 
