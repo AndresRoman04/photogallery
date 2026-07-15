@@ -5,7 +5,7 @@ import GoogleProvider from "next-auth/providers/google"
 import FacebookProvider from "next-auth/providers/facebook"
 import { validateUserCredentials } from "./auth-credentials"
 import { validateCustomerCredentials } from "./customer-credentials"
-import { prisma } from "./prisma"
+import { resolveOAuthSignIn } from "./customer-oauth"
 
 // Two distinct Credentials providers (different `id`s) so admin and customer
 // logins can never cross-authenticate against the other's table, even though
@@ -36,12 +36,14 @@ const providers: Provider[] = [
 ]
 
 // Only registered when configured — keeps the app working out of the box
-// without Google/Facebook app credentials in dev.
+// without Google/Facebook app credentials in dev. No account-linking options:
+// cross-method email collisions are rejected in the signIn callback instead
+// of merged (lib/customer-oauth.ts).
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-  providers.push(GoogleProvider({ allowDangerousEmailAccountLinking: true }))
+  providers.push(GoogleProvider({}))
 }
 if (process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET) {
-  providers.push(FacebookProvider({ allowDangerousEmailAccountLinking: true }))
+  providers.push(FacebookProvider({}))
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -52,15 +54,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   callbacks: {
     async signIn({ user, account }) {
-      // OAuth sign-ins never touch the admin User table — just record the
-      // customer's email (and name, if shared) for future reference.
+      // OAuth sign-ins never touch the admin User table, and never merge into
+      // an email-matched account created by another method — the helper either
+      // records/refreshes the OAuth customer or redirects to an explanation.
       if (account?.provider === "google" || account?.provider === "facebook") {
-        if (!user.email) return false
-        await prisma.customerAccount.upsert({
-          where: { email: user.email },
-          update: { name: user.name ?? undefined },
-          create: { email: user.email, name: user.name ?? null, provider: account.provider },
-        })
+        return resolveOAuthSignIn(user.email, user.name, account.provider)
       }
       return true
     },
