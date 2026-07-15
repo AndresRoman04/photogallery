@@ -39,9 +39,11 @@ function FacebookIcon(props: React.SVGProps<SVGSVGElement>) {
 export function AccountAuth({
   googleEnabled,
   facebookEnabled,
+  accountExistsError = false,
 }: {
   googleEnabled: boolean
   facebookEnabled: boolean
+  accountExistsError?: boolean
 }) {
   const router = useRouter()
   const [loginEmail, setLoginEmail] = useState("")
@@ -140,6 +142,16 @@ export function AccountAuth({
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {accountExistsError && (
+          <div
+            role="alert"
+            className="mb-4 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
+          >
+            An account with this email already exists. Sign in the way you
+            originally created it — with your email and password, or with the
+            provider you first used.
+          </div>
+        )}
         <Tabs defaultValue="sign-in">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="sign-in">Sign In</TabsTrigger>
