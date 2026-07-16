@@ -6,13 +6,18 @@ vi.mock("@/lib/prisma", () => ({
 vi.mock("@/lib/password", () => ({
   hashPassword: vi.fn().mockResolvedValue("hashed-password"),
 }))
+vi.mock("@/lib/login-throttle", () => ({
+  registerAttempt: vi.fn().mockResolvedValue(true),
+}))
 
 import { prisma } from "@/lib/prisma"
 import { hashPassword } from "@/lib/password"
+import { registerAttempt } from "@/lib/login-throttle"
 import { registerCustomerAction } from "./customer-accounts"
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(registerAttempt).mockResolvedValue(true)
 })
 
 describe("registerCustomerAction", () => {
@@ -48,5 +53,21 @@ describe("registerCustomerAction", () => {
     const result = await registerCustomerAction({ email: "jane@example.com", password: "longenough" })
     expect(result.success).toBe(false)
     expect(result.error).toMatch(/already exists/)
+  })
+
+  it("rejects before hashing when throttled", async () => {
+    // Per-email limit hit (first registerAttempt call resolves false).
+    vi.mocked(registerAttempt).mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+    const result = await registerCustomerAction({ email: "jane@example.com", password: "longenough" })
+    expect(result.success).toBe(false)
+    expect(hashPassword).not.toHaveBeenCalled()
+    expect(prisma.customerAccount.create).not.toHaveBeenCalled()
+  })
+
+  it("rejects when the global registration cap is hit", async () => {
+    vi.mocked(registerAttempt).mockResolvedValueOnce(true).mockResolvedValueOnce(false)
+    const result = await registerCustomerAction({ email: "jane@example.com", password: "longenough" })
+    expect(result.success).toBe(false)
+    expect(prisma.customerAccount.create).not.toHaveBeenCalled()
   })
 })

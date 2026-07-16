@@ -3,7 +3,10 @@
 // the same email were ever used in both tables.
 import { prisma } from "./prisma"
 
-export type LoginScope = "admin" | "customer"
+// "admin"/"customer" are the BFT-32 login lockout spaces; "register"/
+// "register-global" are BFT-38's registration rate-limit windows. All share
+// the LoginAttempt table, kept apart by this scope column.
+export type LoginScope = "admin" | "customer" | "register" | "register-global"
 
 // No lockout through this many failures — a single honest typo shouldn't
 // cost the user anything. After that, delay doubles per additional
@@ -46,4 +49,42 @@ export async function recordSuccess(identifier: string, scope: LoginScope): Prom
     create: { identifier, scope, failedCount: 0, lockedUntil: null },
     update: { failedCount: 0, lockedUntil: null },
   })
+}
+
+// Fixed-window rate limiter reusing the LoginAttempt row (BFT-38): failedCount
+// is the count within the current window, lockedUntil marks the window's end.
+// Returns true if the attempt is allowed (and records it), false if the window
+// is already at its limit. Unlike the failure-based lockout above, every call
+// counts — this caps how often an action may even be attempted.
+export async function registerAttempt(
+  identifier: string,
+  scope: LoginScope,
+  limit: number,
+  windowMs: number
+): Promise<boolean> {
+  const now = new Date()
+  const existing = await prisma.loginAttempt.findUnique({
+    where: { identifier_scope: { identifier, scope } },
+  })
+
+  // No row yet, or the previous window has elapsed — start a fresh window.
+  if (!existing || !existing.lockedUntil || existing.lockedUntil <= now) {
+    await prisma.loginAttempt.upsert({
+      where: { identifier_scope: { identifier, scope } },
+      create: { identifier, scope, failedCount: 1, lockedUntil: new Date(now.getTime() + windowMs) },
+      update: { failedCount: 1, lockedUntil: new Date(now.getTime() + windowMs) },
+    })
+    return true
+  }
+
+  // Within the active window — reject once the limit is reached.
+  if (existing.failedCount >= limit) {
+    return false
+  }
+
+  await prisma.loginAttempt.update({
+    where: { identifier_scope: { identifier, scope } },
+    data: { failedCount: existing.failedCount + 1 },
+  })
+  return true
 }

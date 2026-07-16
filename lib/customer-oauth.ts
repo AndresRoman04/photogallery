@@ -16,7 +16,8 @@ export const OAUTH_ACCOUNT_EXISTS_REDIRECT = "/account?error=account-exists"
 export async function resolveOAuthSignIn(
   email: string | null | undefined,
   name: string | null | undefined,
-  provider: string
+  provider: string,
+  emailVerified: boolean = false
 ): Promise<true | string> {
   if (!email) return OAUTH_ACCOUNT_EXISTS_REDIRECT
 
@@ -36,6 +37,20 @@ export async function resolveOAuthSignIn(
       where: { email },
       data: { name: name ?? undefined },
     })
+    return true
+  }
+
+  // Verified-OAuth reclaim (BFT-38): the email is held by an unverified
+  // credentials account, but this provider (Google) asserts it verified the
+  // mailbox — the same proof a password-reset email gives. Registration never
+  // verified the password-holder's email, so the mailbox owner wins: convert
+  // the row to OAuth and null the squatter's password, which stops working.
+  if (existing.passwordHash && existing.provider === "credentials" && emailVerified) {
+    await prisma.customerAccount.update({
+      where: { email },
+      data: { provider, passwordHash: null, name: name ?? undefined },
+    })
+    console.warn(`Credentials account reclaimed by verified ${provider} sign-in: ${email}`)
     return true
   }
 

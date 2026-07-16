@@ -56,6 +56,39 @@ describe("resolveOAuthSignIn", () => {
     expect(prisma.customerAccount.update).not.toHaveBeenCalled()
   })
 
+  it("lets a verified Google sign-in reclaim an unverified credentials squat", async () => {
+    vi.mocked(prisma.customerAccount.findUnique).mockResolvedValue({
+      id: "1",
+      email: "jane@example.com",
+      passwordHash: "hashed",
+      provider: "credentials",
+    } as any)
+
+    const result = await resolveOAuthSignIn("jane@example.com", "Jane", "google", true)
+
+    expect(result).toBe(true)
+    // Converts to Google and nulls the squatter's password so it stops working.
+    expect(prisma.customerAccount.update).toHaveBeenCalledWith({
+      where: { email: "jane@example.com" },
+      data: { provider: "google", passwordHash: null, name: "Jane" },
+    })
+  })
+
+  it("does not reclaim a credentials account when the email is unverified", async () => {
+    vi.mocked(prisma.customerAccount.findUnique).mockResolvedValue({
+      id: "1",
+      email: "jane@example.com",
+      passwordHash: "hashed",
+      provider: "credentials",
+    } as any)
+
+    // Facebook (or Google with email_verified false) passes emailVerified=false.
+    const result = await resolveOAuthSignIn("jane@example.com", "Jane", "facebook", false)
+
+    expect(result).toBe(OAUTH_ACCOUNT_EXISTS_REDIRECT)
+    expect(prisma.customerAccount.update).not.toHaveBeenCalled()
+  })
+
   it("denies sign-in when the email belongs to a different OAuth provider", async () => {
     vi.mocked(prisma.customerAccount.findUnique).mockResolvedValue({
       id: "1",
