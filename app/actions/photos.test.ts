@@ -19,10 +19,14 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
 vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
 }))
+vi.mock("@/lib/login-throttle", () => ({
+  registerAttempt: vi.fn().mockResolvedValue(true),
+}))
 
 import { prisma } from "@/lib/prisma"
 import { deleteFile } from "@/lib/storage"
 import { auth } from "@/lib/auth"
+import { registerAttempt } from "@/lib/login-throttle"
 import {
   uploadPhotoAction,
   getGalleryPhotosAction,
@@ -40,6 +44,7 @@ beforeEach(() => {
   // Owner-scoped actions require an admin session; individual tests override
   // this to exercise the unauthorized paths.
   vi.mocked(auth).mockResolvedValue(ADMIN_SESSION as any)
+  vi.mocked(registerAttempt).mockResolvedValue(true)
 })
 
 describe("uploadPhotoAction", () => {
@@ -301,6 +306,52 @@ describe("submitSelectionAction", () => {
 
     const result = await submitSelectionAction({ customerEmail: "a@b.com", selectedPhotos: ["p1"] })
     expect(result.success).toBe(true)
+  })
+
+  it("rejects an invalid email before any DB work", async () => {
+    const result = await submitSelectionAction({ customerEmail: "not-an-email", selectedPhotos: ["p1"] })
+    expect(result.success).toBe(false)
+    expect(result.error).toMatch(/valid email/)
+    expect(prisma.photo.findMany).not.toHaveBeenCalled()
+    expect(prisma.customerSelection.create).not.toHaveBeenCalled()
+  })
+
+  it("normalizes the email to lowercase before storing", async () => {
+    vi.mocked(prisma.customerSelection.create).mockResolvedValue({ id: "s1" } as any)
+    vi.mocked(prisma.photo.findMany).mockResolvedValue([validPhotos[0]] as any)
+
+    await submitSelectionAction({ customerEmail: "  A@B.com ", selectedPhotos: ["p1"] })
+    expect(prisma.customerSelection.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ customerEmail: "a@b.com" }) })
+    )
+  })
+
+  it("rejects a selection over the photo cap", async () => {
+    const tooMany = Array.from({ length: 101 }, (_, i) => `p${i}`)
+    const result = await submitSelectionAction({ customerEmail: "a@b.com", selectedPhotos: tooMany })
+    expect(result.success).toBe(false)
+    expect(result.error).toMatch(/at most 100 photos/)
+    expect(prisma.photo.findMany).not.toHaveBeenCalled()
+  })
+
+  it("rejects over-long notes", async () => {
+    const result = await submitSelectionAction({
+      customerEmail: "a@b.com",
+      selectedPhotos: ["p1"],
+      notes: "x".repeat(2001),
+    })
+    expect(result.success).toBe(false)
+    expect(result.error).toMatch(/Notes must be at most/)
+    expect(prisma.photo.findMany).not.toHaveBeenCalled()
+  })
+
+  it("rejects when throttled, before any DB work", async () => {
+    vi.mocked(registerAttempt).mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+    const result = await submitSelectionAction({ customerEmail: "a@b.com", selectedPhotos: ["p1"] })
+    expect(result.success).toBe(false)
+    expect(result.error).toMatch(/Too many submissions/)
+    expect(prisma.photo.findMany).not.toHaveBeenCalled()
+    expect(prisma.customerSelection.create).not.toHaveBeenCalled()
   })
 })
 

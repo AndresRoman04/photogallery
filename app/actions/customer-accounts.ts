@@ -3,8 +3,8 @@
 import { prisma } from "@/lib/prisma"
 import { hashPassword } from "@/lib/password"
 import { registerAttempt } from "@/lib/login-throttle"
+import { EMAIL_REGEX } from "@/lib/validation"
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MIN_PASSWORD_LENGTH = 8
 
 // Per-email: slows repeated attempts on one address. Global: the only reliable

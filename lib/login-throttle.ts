@@ -4,9 +4,16 @@
 import { prisma } from "./prisma"
 
 // "admin"/"customer" are the BFT-32 login lockout spaces; "register"/
-// "register-global" are BFT-38's registration rate-limit windows. All share
-// the LoginAttempt table, kept apart by this scope column.
-export type LoginScope = "admin" | "customer" | "register" | "register-global"
+// "register-global" are BFT-38's registration rate-limit windows; "select"/
+// "select-global" are BFT-39's selection-submission windows. All share the
+// LoginAttempt table, kept apart by this scope column.
+export type LoginScope =
+  | "admin"
+  | "customer"
+  | "register"
+  | "register-global"
+  | "select"
+  | "select-global"
 
 // No lockout through this many failures — a single honest typo shouldn't
 // cost the user anything. After that, delay doubles per additional

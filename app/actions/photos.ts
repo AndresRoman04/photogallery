@@ -3,8 +3,24 @@
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/lib/auth"
 import { uploadFile, getImageUrl, deleteFile } from "@/lib/storage"
+import { registerAttempt } from "@/lib/login-throttle"
+import {
+  EMAIL_REGEX,
+  MAX_EMAIL_LENGTH,
+  MAX_NAME_LENGTH,
+  MAX_NOTES_LENGTH,
+  MAX_SELECTION_PHOTOS,
+} from "@/lib/validation"
 import { revalidatePath } from "next/cache"
 import { Resend } from "resend"
+
+// submitSelectionAction is a public, unauthenticated server action — cap how
+// often one email (and everyone combined) can submit, matching BFT-38's
+// two-layer registration throttle. Client IP is untrusted here (no proxy).
+const SELECT_PER_EMAIL_LIMIT = 5
+const SELECT_PER_EMAIL_WINDOW_MS = 10 * 60_000
+const SELECT_GLOBAL_LIMIT = 100
+const SELECT_GLOBAL_WINDOW_MS = 60 * 60_000
 
 // Server Actions are invocable endpoints in their own right — proxy.ts only
 // gates /admin page routes, and this module is also imported by the public
@@ -163,6 +179,33 @@ export async function submitSelectionAction(data: {
     if (photoIds.length === 0) {
       return { success: false, error: "No photos selected" }
     }
+    if (photoIds.length > MAX_SELECTION_PHOTOS) {
+      return { success: false, error: `A selection can include at most ${MAX_SELECTION_PHOTOS} photos.` }
+    }
+
+    // Validate the client-supplied contact fields before doing any DB work or
+    // sending mail — this action is public and its output is emailed verbatim.
+    const customerEmail = data.customerEmail?.trim().toLowerCase() ?? ""
+    if (!customerEmail || customerEmail.length > MAX_EMAIL_LENGTH || !EMAIL_REGEX.test(customerEmail)) {
+      return { success: false, error: "Enter a valid email address." }
+    }
+    if (data.customerName && data.customerName.length > MAX_NAME_LENGTH) {
+      return { success: false, error: `Name must be at most ${MAX_NAME_LENGTH} characters.` }
+    }
+    if (data.notes && data.notes.length > MAX_NOTES_LENGTH) {
+      return { success: false, error: `Notes must be at most ${MAX_NOTES_LENGTH} characters.` }
+    }
+
+    // Throttle before the insert/email. Generic error on limit (no oracle),
+    // logged server-side — same convention as BFT-32/BFT-38.
+    const [emailOk, globalOk] = await Promise.all([
+      registerAttempt(customerEmail, "select", SELECT_PER_EMAIL_LIMIT, SELECT_PER_EMAIL_WINDOW_MS),
+      registerAttempt("*", "select-global", SELECT_GLOBAL_LIMIT, SELECT_GLOBAL_WINDOW_MS),
+    ])
+    if (!emailOk || !globalOk) {
+      console.warn(`Selection submission throttled (email=${customerEmail}, emailOk=${emailOk}, globalOk=${globalOk})`)
+      return { success: false, error: "Too many submissions. Please try again later." }
+    }
 
     // The ids come straight from the client — verify they're all real, active,
     // and belong to a single photographer, so one selection can never mix
@@ -180,7 +223,7 @@ export async function submitSelectionAction(data: {
 
     const selection = await prisma.customerSelection.create({
       data: {
-        customerEmail: data.customerEmail,
+        customerEmail,
         customerName: data.customerName,
         notes: data.notes,
         photos: { create: photoIds.map((photoId) => ({ photoId })) },
@@ -196,7 +239,7 @@ export async function submitSelectionAction(data: {
         select: { title: true, storagePath: true },
       })
       const photoList = photos.map((p) => `- ${p.title} (${p.storagePath})`).join("\n")
-      const emailContent = `New Photo Selection Received!\n\nCustomer Details:\n- Email: ${data.customerEmail}\n- Name: ${data.customerName || "Not provided"}\n\nSelected Photos (${photoIds.length}):\n${photoList}\n\n${data.notes ? `Additional Notes:\n${data.notes}\n\n` : ""}---\nThis notification was sent automatically from your Photo Gallery.`
+      const emailContent = `New Photo Selection Received!\n\nCustomer Details:\n- Email: ${customerEmail}\n- Name: ${data.customerName || "Not provided"}\n\nSelected Photos (${photoIds.length}):\n${photoList}\n\n${data.notes ? `Additional Notes:\n${data.notes}\n\n` : ""}---\nThis notification was sent automatically from your Photo Gallery.`
 
       // NOTIFICATION_EMAIL is the dedicated recipient for these alerts; ADMIN_EMAIL is
       // kept only as a fallback for deployments that haven't set it yet (it now mainly
@@ -210,7 +253,7 @@ export async function submitSelectionAction(data: {
       await resend.emails.send({
         from: process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev",
         to: notificationRecipient,
-        subject: `New Photo Selection from ${data.customerEmail}`,
+        subject: `New Photo Selection from ${customerEmail}`,
         text: emailContent,
       })
     } catch (emailError) {

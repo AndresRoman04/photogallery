@@ -4,9 +4,9 @@ import { prisma } from "@/lib/prisma"
 import { hashPassword } from "@/lib/password"
 import { generateUniqueSlug } from "@/lib/slug"
 import { auth } from "@/lib/auth"
+import { EMAIL_REGEX } from "@/lib/validation"
 import { revalidatePath } from "next/cache"
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MIN_PASSWORD_LENGTH = 8
 
 export async function getUsersAction() {
