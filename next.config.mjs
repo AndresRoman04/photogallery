@@ -20,7 +20,10 @@ const nextConfig = {
   allowedDevOrigins: ["192.168.1.*"],
   experimental: {
     serverActions: {
-      bodySizeLimit: "10mb",
+      // Must stay above MAX_FILE_SIZE_MB in app/actions/photos.ts (20MB) plus
+      // multipart encoding overhead — Next rejects the request before the
+      // action's own size check runs otherwise.
+      bodySizeLimit: "24mb",
     },
   },
   images: {
