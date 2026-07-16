@@ -66,10 +66,12 @@ When running via Docker Compose, the following local services are exposed:
 
 The admin dashboard is protected and located at `/admin`. To access it:
 1. Navigate to `/login`.
-2. Sign in with the default credentials:
-   - **Email:** `admin@example.com`
-   - **Password:** `adminPassword`
+2. Sign in with the seeded admin account. Its email and password come from
+   `ADMIN_EMAIL` / `ADMIN_PASSWORD` in your `.env`. On a fresh `./init.sh` run
+   the password is randomly generated and printed once at the end of setup —
+   save it then. (Default email: `admin@example.com`.)
 3. You will be automatically redirected to the admin dashboard.
+4. Manage accounts and change passwords anytime at `/admin/users`.
 
 ---
 
