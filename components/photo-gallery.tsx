@@ -19,6 +19,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 
 interface Photo {
   id: string
@@ -40,6 +41,9 @@ export function PhotoGallery({ slug }: { slug: string }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set())
+  // Which photo is open in the full-screen lightbox (null = closed). Resolved
+  // against the current page's photos, so paginating away closes a stale one.
+  const [lightboxPhotoId, setLightboxPhotoId] = useState<string | null>(null)
   const [showEmailForm, setShowEmailForm] = useState(false)
   const [customerEmail, setCustomerEmail] = useState("")
   const [customerName, setCustomerName] = useState("")
@@ -173,6 +177,9 @@ export function PhotoGallery({ slug }: { slug: string }) {
   }
 
   const selectionBarVisible = selectedPhotos.size > 0 && !showEmailForm
+  // Resolve against the current page so a lightbox id from a prior page (after
+  // pagination) resolves to null and the Dialog closes on its own.
+  const lightboxPhoto = photos.find((p) => p.id === lightboxPhotoId) ?? null
 
   return (
     <div className={`space-y-6 ${selectionBarVisible ? "pb-24" : ""}`}>
@@ -280,14 +287,21 @@ export function PhotoGallery({ slug }: { slug: string }) {
             style={{ animationDelay: `${index * 100}ms` }}
           >
             <div className="relative aspect-[4/3] overflow-hidden">
-              <Image
-                src={photo.imageUrl || "/placeholder.svg"}
-                alt={photo.title}
-                fill
-                className="object-cover transition-all duration-700 group-hover:scale-105"
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <button
+                type="button"
+                onClick={() => setLightboxPhotoId(photo.id)}
+                className="absolute inset-0 h-full w-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+                aria-label={`View "${photo.title}" full screen`}
+              >
+                <Image
+                  src={photo.imageUrl || "/placeholder.svg"}
+                  alt={photo.title}
+                  fill
+                  className="object-cover transition-all duration-700 group-hover:scale-105"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </button>
               <Button
                 variant={selectedPhotos.has(photo.id) ? "default" : "secondary"}
                 size="sm"
@@ -296,7 +310,11 @@ export function PhotoGallery({ slug }: { slug: string }) {
                     ? "opacity-100 scale-110 bg-primary text-primary-foreground shadow-lg"
                     : "opacity-0 group-hover:opacity-100 hover:scale-110 bg-background/90 backdrop-blur-sm"
                 }`}
-                onClick={() => togglePhotoSelection(photo.id)}
+                // stopPropagation so tapping select never also opens the lightbox.
+                onClick={(e) => {
+                  e.stopPropagation()
+                  togglePhotoSelection(photo.id)
+                }}
                 disabled={showEmailForm}
               >
                 <Heart
@@ -377,6 +395,61 @@ export function PhotoGallery({ slug }: { slug: string }) {
           <p className="text-muted-foreground text-sm mt-2">Check back soon for new additions!</p>
         </Card>
       )}
+
+      {/* Full-screen lightbox — one Dialog, driven by lightboxPhoto (derived
+          from the current page so paginating away closes a stale photo). It
+          shares selectedPhotos/togglePhotoSelection with the grid, so selecting
+          here updates the cards and the bottom bar reactively. */}
+      <Dialog
+        open={lightboxPhoto !== null}
+        onOpenChange={(open) => {
+          if (!open) setLightboxPhotoId(null)
+        }}
+      >
+        <DialogContent
+          className="top-0 left-0 h-screen w-screen max-w-none translate-x-0 translate-y-0 gap-0 rounded-none border-0 bg-black/95 p-0 sm:max-w-none"
+        >
+          {lightboxPhoto && (
+            <>
+              <DialogTitle className="sr-only">{lightboxPhoto.title}</DialogTitle>
+              {lightboxPhoto.description ? (
+                <DialogDescription className="sr-only">{lightboxPhoto.description}</DialogDescription>
+              ) : null}
+              {/* Image fills the whole screen (contained so it's never cropped). */}
+              <div className="relative h-full w-full">
+                <Image
+                  src={lightboxPhoto.imageUrl || "/placeholder.svg"}
+                  alt={lightboxPhoto.title}
+                  fill
+                  className="object-contain"
+                  sizes="100vw"
+                  priority
+                />
+              </div>
+              {/* Info + select control overlaid along the bottom edge. */}
+              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-4 bg-gradient-to-t from-black/80 to-transparent p-4 pt-10 sm:p-6">
+                <div className="min-w-0 text-white">
+                  <h3 className="truncate font-semibold">{lightboxPhoto.title}</h3>
+                  {lightboxPhoto.description && (
+                    <p className="truncate text-sm text-white/70">{lightboxPhoto.description}</p>
+                  )}
+                </div>
+                <Button
+                  variant={selectedPhotos.has(lightboxPhoto.id) ? "default" : "secondary"}
+                  onClick={() => togglePhotoSelection(lightboxPhoto.id)}
+                  disabled={showEmailForm}
+                  className="shrink-0"
+                >
+                  <Heart
+                    className={`mr-2 h-4 w-4 ${selectedPhotos.has(lightboxPhoto.id) ? "fill-current" : ""}`}
+                  />
+                  {selectedPhotos.has(lightboxPhoto.id) ? "Selected" : "Select"}
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
