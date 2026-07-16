@@ -67,7 +67,7 @@ describe("uploadPhotoAction", () => {
   })
 
   it("rejects a file over the size limit", async () => {
-    const big = new File([new Uint8Array(9 * 1024 * 1024)], "photo.jpg", { type: "image/jpeg" })
+    const big = new File([new Uint8Array(21 * 1024 * 1024)], "photo.jpg", { type: "image/jpeg" })
     const formData = new FormData()
     formData.append("file", big)
     formData.append("title", "test")

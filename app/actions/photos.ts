@@ -274,7 +274,10 @@ const ALLOWED_CONTENT_TYPES: Record<string, string> = {
   webp: "image/webp",
   gif: "image/gif",
 }
-const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024 // 8MB, under the 10mb Server Actions body limit
+// Keep in sync with next.config.mjs `serverActions.bodySizeLimit`, which must
+// stay a few MB above this to leave room for multipart encoding overhead.
+const MAX_FILE_SIZE_MB = 20
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
 export async function uploadPhotoAction(formData: FormData) {
   try {
@@ -301,7 +304,7 @@ export async function uploadPhotoAction(formData: FormData) {
     }
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      return { success: false, error: "File too large. Maximum size is 8MB." }
+      return { success: false, error: `File too large. Maximum size is ${MAX_FILE_SIZE_MB}MB.` }
     }
 
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
