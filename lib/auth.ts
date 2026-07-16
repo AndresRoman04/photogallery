@@ -53,12 +53,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/login",
   },
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       // OAuth sign-ins never touch the admin User table, and never merge into
       // an email-matched account created by another method — the helper either
       // records/refreshes the OAuth customer or redirects to an explanation.
+      // Google's OIDC profile carries email_verified; a verified sign-in may
+      // reclaim an unverified credentials squat (BFT-38). Facebook has no such
+      // claim, so its collisions always deny.
       if (account?.provider === "google" || account?.provider === "facebook") {
-        return resolveOAuthSignIn(user.email, user.name, account.provider)
+        const emailVerified = (profile as { email_verified?: boolean } | undefined)?.email_verified === true
+        return resolveOAuthSignIn(user.email, user.name, account.provider, emailVerified)
       }
       return true
     },

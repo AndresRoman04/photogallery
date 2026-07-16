@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
 
 vi.mock("./prisma", () => ({
-  prisma: { loginAttempt: { findUnique: vi.fn(), upsert: vi.fn() } },
+  prisma: { loginAttempt: { findUnique: vi.fn(), upsert: vi.fn(), update: vi.fn() } },
 }))
 
 import { prisma } from "./prisma"
-import { isLockedOut, recordFailure, recordSuccess } from "./login-throttle"
+import { isLockedOut, recordFailure, recordSuccess, registerAttempt } from "./login-throttle"
 
 const WHERE = { where: { identifier_scope: { identifier: "jane@example.com", scope: "customer" } } }
 
@@ -91,5 +91,53 @@ describe("recordSuccess", () => {
       create: { identifier: "jane@example.com", scope: "customer", failedCount: 0, lockedUntil: null },
       update: { failedCount: 0, lockedUntil: null },
     })
+  })
+})
+
+describe("registerAttempt", () => {
+  it("starts a fresh window and allows when no row exists", async () => {
+    vi.mocked(prisma.loginAttempt.findUnique).mockResolvedValue(null)
+    const allowed = await registerAttempt("jane@example.com", "register", 3, 60_000)
+    expect(allowed).toBe(true)
+    expect(prisma.loginAttempt.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ failedCount: 1 }),
+      })
+    )
+  })
+
+  it("resets the window when the previous one has elapsed", async () => {
+    vi.mocked(prisma.loginAttempt.findUnique).mockResolvedValue({
+      failedCount: 3,
+      lockedUntil: new Date(Date.now() - 1000),
+    } as any)
+    const allowed = await registerAttempt("jane@example.com", "register", 3, 60_000)
+    expect(allowed).toBe(true)
+    expect(prisma.loginAttempt.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ update: expect.objectContaining({ failedCount: 1 }) })
+    )
+  })
+
+  it("increments and allows while under the limit within the window", async () => {
+    vi.mocked(prisma.loginAttempt.findUnique).mockResolvedValue({
+      failedCount: 1,
+      lockedUntil: new Date(Date.now() + 60_000),
+    } as any)
+    const allowed = await registerAttempt("jane@example.com", "register", 3, 60_000)
+    expect(allowed).toBe(true)
+    expect(prisma.loginAttempt.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { failedCount: 2 } })
+    )
+  })
+
+  it("denies once the limit is reached within the active window", async () => {
+    vi.mocked(prisma.loginAttempt.findUnique).mockResolvedValue({
+      failedCount: 3,
+      lockedUntil: new Date(Date.now() + 60_000),
+    } as any)
+    const allowed = await registerAttempt("jane@example.com", "register", 3, 60_000)
+    expect(allowed).toBe(false)
+    expect(prisma.loginAttempt.update).not.toHaveBeenCalled()
+    expect(prisma.loginAttempt.upsert).not.toHaveBeenCalled()
   })
 })
