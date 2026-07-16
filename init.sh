@@ -15,6 +15,10 @@ if [ ! -f .env ]; then
     RANDOM_SECRET=$(openssl rand -base64 33 2>/dev/null || echo "placeholder_auth_secret_please_change_me_1234567890")
     POSTGRES_PASSWORD=$(openssl rand -hex 16 2>/dev/null || echo "change_me_postgres_password")
     MINIO_ROOT_PASSWORD=$(openssl rand -hex 16 2>/dev/null || echo "change_me_minio_password")
+    ADMIN_PASSWORD=$(openssl rand -base64 18 2>/dev/null || echo "change_me_admin_password")
+    # Only this branch writes a fresh .env, so only here do we know the admin
+    # password — used to print it once at the end (see final output).
+    GENERATED_ENV=1
 
     cat <<EOT > .env
 # Database (Postgres/Docker)
@@ -28,7 +32,7 @@ NEXTAUTH_URL="http://localhost:3000"
 # Used only to seed the first DB-backed user account on first run (see prisma/seed.ts)
 # and as a fallback notification recipient. Accounts are managed at /admin/users afterward.
 ADMIN_EMAIL="admin@example.com"
-ADMIN_PASSWORD="adminPassword"
+ADMIN_PASSWORD="${ADMIN_PASSWORD}"
 
 # Branding: shown in the home hero and footer. Baked into the client bundle at
 # build time (NEXT_PUBLIC_*) — rebuild the app container after changing it.
@@ -80,5 +84,12 @@ echo "✅ Initialization complete!"
 echo "🌐 App is running at: http://localhost:3000"
 echo "🗄️ MinIO S3 API is at: http://localhost:9000"
 echo "📊 MinIO Console is at: http://localhost:9001"
-echo "🔐 Admin credentials: admin@example.com / adminPassword"
-echo "   (Manage additional accounts at /admin/users once logged in.)"
+if [ -n "${GENERATED_ENV}" ]; then
+  # This run generated .env, so we can safely show the password once.
+  echo "🔐 Admin login: admin@example.com / ${ADMIN_PASSWORD}"
+  echo "   (Save it now — it's random, and only shown here. Manage accounts at /admin/users.)"
+else
+  # .env was pre-existing/symlinked; never assert a password we didn't set.
+  echo "🔐 Admin login: use ADMIN_EMAIL / ADMIN_PASSWORD from your .env"
+  echo "   (Manage additional accounts at /admin/users once logged in.)"
+fi
